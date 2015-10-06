@@ -32,7 +32,7 @@ namespace F2B.processors
                 max_ignore = int.Parse(config.Options["max_ignore"].Value);
             }
 
-            bantime = 60;
+            bantime = 600;
             if (config.Options["bantime"] != null)
             {
                 bantime = int.Parse(config.Options["bantime"].Value);
@@ -108,7 +108,7 @@ namespace F2B.processors
                 }
             }
 
-            long expiration = DateTime.UtcNow.Ticks + btime * 100L * 1000L * 1000L;
+            long expiration = DateTime.UtcNow.Ticks + btime * TimeSpan.TicksPerSecond;
 
             F2B.FwData fwData = new F2B.FwData(expiration, addr);
             F2B.FwManager.Instance.Add(fwData);

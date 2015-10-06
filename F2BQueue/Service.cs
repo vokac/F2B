@@ -193,7 +193,7 @@ namespace F2B
             // cleanup empty / expired fail objects from "data" dictionary
             lock (thisSubscribersLock)
             {
-                foreach (var s in subscribers.Where(kv => kv.Value + unsubscribeInterval * 100L * 1000L * 1000L < currTime).ToList())
+                foreach (var s in subscribers.Where(kv => kv.Value + unsubscribeInterval * TimeSpan.TicksPerSecond < currTime).ToList())
                 {
                     MessageQueue msmq = s.Key;
 
@@ -227,7 +227,7 @@ namespace F2B
             {
                 sizeBefore = qdata.Count;
 
-                foreach (var s in qdata.Where(kv => kv.Key + cleanupExpiredInterval * 100L * 1000L * 1000L < currTime).ToList())
+                foreach (var s in qdata.Where(kv => kv.Key + cleanupExpiredInterval * TimeSpan.TicksPerSecond < currTime).ToList())
                 {
                     byte[] hash = s.Value.Item2;
                     qhash.Remove(hash);

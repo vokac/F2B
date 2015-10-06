@@ -144,7 +144,7 @@ namespace F2B.processors
             msg.BodyStream.WriteByte((byte)'B');
             msg.BodyStream.WriteByte((byte)F2B_DATA_TYPE_ENUM.F2B_FWDATA_TYPE0);
 
-            long expiration = DateTime.UtcNow.Ticks + btime * 100L * 1000L * 1000L;
+            long expiration = DateTime.UtcNow.Ticks + btime * TimeSpan.TicksPerSecond;
 
             //BinaryWriter stream = new BinaryWriter(msg.BodyStream);
             //MemoryStream memStream = new MemoryStream();

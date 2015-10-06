@@ -224,7 +224,7 @@ namespace F2B.inputs
         private void ProcessLines()
         {
             // skip processing because of recent fatal error (60s)
-            if (errtime > 0 && errtime + 60 * 10 * 1000 * 1000 < DateTime.Now.Ticks)
+            if (errtime > 0 && errtime + 60 * TimeSpan.TicksPerSecond < DateTime.Now.Ticks)
             {
                 return;
             }

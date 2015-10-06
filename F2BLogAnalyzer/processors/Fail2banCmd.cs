@@ -92,7 +92,7 @@ namespace F2B.processors
             }
 
             string address;
-            long expiration = DateTime.UtcNow.Ticks + btime * 100L * 1000L * 1000L;
+            long expiration = DateTime.UtcNow.Ticks + btime * TimeSpan.TicksPerSecond;
 
             if (addr.IsIPv4MappedToIPv6)
             {

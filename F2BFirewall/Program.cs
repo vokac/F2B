@@ -85,7 +85,7 @@ namespace F2B
             Console.WriteLine("  # list all F2B filter rules");
             Console.WriteLine("  F2BFirewall.exe list-filters");
             Console.WriteLine("  # add F2B firewall filter for 192.0.2.123/24 with 5 minute expiration");
-            Console.WriteLine("  F2BFirewall.exe add-filter -a 192.0.2.123/24 -e " + (DateTime.UtcNow.Ticks + 5L * 60 * 100 * 1000 * 1000));
+            Console.WriteLine("  F2BFirewall.exe add-filter -a 192.0.2.123/24 -e " + (DateTime.UtcNow.Ticks + 5 * 60 * TimeSpan.TicksPerSecond));
             Console.WriteLine("  # add pernament F2B firewall filter with hight priority which permits access from 192.0.2.234");
             Console.WriteLine("  F2BFirewall.exe add-filter -a 192.0.2.234 -w 16 -t");
             Console.WriteLine("  # remove filter with ID 12345678 (only F2B rules can be removed)");

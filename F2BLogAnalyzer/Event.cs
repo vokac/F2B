@@ -205,7 +205,7 @@ namespace F2B
             {
                 // log new dropped events every minute
                 long currtime = DateTime.Now.Ticks;
-                if (lasttime % (60 * 10 * 1000 * 1000) != currtime % (60 * 10 * 1000 * 1000))
+                if (lasttime % (60 * TimeSpan.TicksPerSecond) != currtime % (60 * TimeSpan.TicksPerSecond))
                 {
                     dropped++;
                     lasttime = currtime;
@@ -344,7 +344,7 @@ namespace F2B
                         {
                             // reset exception counter (to log another group of exceptions)
                             long currtime = DateTime.Now.Ticks;
-                            if (errtime + 60 * (10 * 1000 * 1000) < currtime)
+                            if (errtime + 60 * TimeSpan.TicksPerSecond < currtime)
                             {
                                 errcnt = 0;
                                 errtime = currtime;

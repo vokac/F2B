@@ -30,7 +30,6 @@ namespace F2B.processors
         private Timer cleanup_timer;
         private long clockskew;
 
-        private static long STICKS = 10 * 1000 * 1000;
         private Object thisLock = new Object();
         #endregion
 
@@ -393,7 +392,7 @@ namespace F2B.processors
             : base(config, service)
         {
             // default values
-            findtime = 600 * STICKS;
+            findtime = 600;
             ipv4_prefix = 32;
             ipv6_prefix = 64;
             cleanup = 300;
@@ -408,7 +407,7 @@ namespace F2B.processors
             // set values from config file
             if (config.Options["findtime"] != null)
             {
-                findtime = long.Parse(config.Options["findtime"].Value) * STICKS;
+                findtime = long.Parse(config.Options["findtime"].Value);
             }
             if (config.Options["ipv4_prefix"] != null)
             {
@@ -525,7 +524,7 @@ namespace F2B.processors
                     Log.Info("Fail2ban[" + Name + "]: cleanup expired treshold "
                         + treshold.Name + " started: " + treshold.Last.Count + ")");
 
-                    foreach (var s in treshold.Last.Where(kv => kv.Value + treshold.Repeat * STICKS <= now).ToList())
+                    foreach (var s in treshold.Last.Where(kv => kv.Value + treshold.Repeat * TimeSpan.TicksPerSecond <= now).ToList())
                     {
                         treshold.Last.Remove(s.Key);
                     }
@@ -577,7 +576,7 @@ namespace F2B.processors
             {
                 return false;
             }
-            else if (treshold.Repeat > 0 && last + treshold.Repeat * STICKS > now)
+            else if (treshold.Repeat > 0 && last + treshold.Repeat * TimeSpan.TicksPerSecond > now)
             {
                 return false;
             }
@@ -615,14 +614,14 @@ namespace F2B.processors
             if (logtime > now)
             {
                 // is clock skew too hight!? occasionally log warning
-                if (logtime > now + 300 * STICKS)
+                if (logtime > now + 300 * TimeSpan.TicksPerSecond)
                 {
-                    if (clockskew + 60 * STICKS < now)
+                    if (clockskew + 60 * TimeSpan.TicksPerSecond < now)
                     {
                         clockskew = now;
 
                         Log.Warn("Fail2ban[" + Name + "]: logtime from future ("
-                            + ((logtime - now) / STICKS) + " seconds) for "
+                            + ((logtime - now) / TimeSpan.TicksPerSecond) + " seconds) for "
                             + evtlog.Input + "/" + evtlog.Input.SelectorName
                             + " from " + evtlog.Hostname);
                     }
@@ -642,10 +641,10 @@ namespace F2B.processors
                 {
                     switch (history)
                     {
-                        case HistoryType.ALL: fail = new FailAll(findtime); break;
-                        case HistoryType.ONE: fail = new FailOne(findtime); break;
-                        case HistoryType.FIXED: fail = new FailFixed(findtime, history_fixed_count); break;
-                        case HistoryType.RRD: fail = new FailRRD(findtime, history_rrd_count, history_rrd_repeat); break;
+                        case HistoryType.ALL: fail = new FailAll(findtime * TimeSpan.TicksPerSecond); break;
+                        case HistoryType.ONE: fail = new FailOne(findtime * TimeSpan.TicksPerSecond); break;
+                        case HistoryType.FIXED: fail = new FailFixed(findtime * TimeSpan.TicksPerSecond, history_fixed_count); break;
+                        case HistoryType.RRD: fail = new FailRRD(findtime * TimeSpan.TicksPerSecond, history_rrd_count, history_rrd_repeat); break;
                     }
 
                     data[addr] = fail;
