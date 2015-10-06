@@ -15,7 +15,7 @@ namespace F2B
             // serviceProcessInstaller
             // 
             serviceProcessInstaller = new ServiceProcessInstaller();
-            serviceProcessInstaller.Account = ServiceAccount.NetworkService;
+            serviceProcessInstaller.Account = ServiceAccount.LocalSystem;
             serviceProcessInstaller.Password = null;
             serviceProcessInstaller.Username = null;
 
