@@ -44,10 +44,10 @@ namespace F2B
         public static void Examples()
         {
             Console.WriteLine("Examples:");
-            Console.WriteLine("  rem Interactive run for debuging");
+            Console.WriteLine("  # Interactive run for debuging");
             Console.WriteLine("  F2BLogAnalyzer.exe run -c F2BLogAnalyzer.config");
-            Console.WriteLine("  rem Manage F2BLogAnalyzer service");
-            Console.WriteLine("  F2BLogAnalyzer.exe install -c c:\\F2BLogAnalyzer.config [-u DOMAIN\\username]");
+            Console.WriteLine("  # Manage F2BLogAnalyzer service");
+            Console.WriteLine("  F2BLogAnalyzer.exe install -c c:\\F2B\\F2BLogAnalyzer.config [-u DOMAIN\\username] [-l INFO] [-g c:\\F2B\\F2BLogAnalyzer.log]");
             Console.WriteLine("  F2BLogAnalyzer.exe start");
             Console.WriteLine("  F2BLogAnalyzer.exe stop");
             Console.WriteLine("  F2BLogAnalyzer.exe uninstall");
@@ -56,11 +56,12 @@ namespace F2B
             Console.WriteLine("  sc create " + Service.NAME + " binPath= \"C:\\path\\to\\executable\\F2BLogAnalyzer.exe\" DisplayName= \"" + Service.DISPLAY + "\" type= own start= auto depend= eventlog/MSMQ");
             Console.WriteLine("  sc description " + Service.NAME + " \"" + Service.DESCR + "\"");
             Console.WriteLine("  sc queryex " + Service.NAME);
+            Console.WriteLine("  sc qc " + Service.NAME);
             Console.WriteLine("  sc start " + Service.NAME);
             Console.WriteLine("  sc stop " + Service.NAME);
             Console.WriteLine("  sc delete " + Service.NAME);
             Console.WriteLine("User access to windows event log");
-            Console.WriteLine("  rem Add user to \"Event Log Readers\" group or change directly log SDDL, e.g.");
+            Console.WriteLine("  # Add user to \"Event Log Readers\" group or change directly log SDDL, e.g.");
             Console.WriteLine("  wevtutil gl Application");
             Console.WriteLine("  wevtutil sl Application /ca:...(A;;0x3;;;\"SID\")");
         }

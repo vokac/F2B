@@ -66,12 +66,12 @@ namespace F2B
         public static void Examples()
         {
             Console.WriteLine("Examples:");
-            Console.WriteLine("  # service startup command for F2BQueue running on HOST with f2buser privileges");
-            Console.WriteLine("  F2BFirewall.exe run -h HOST -r F2BFWRegistration -i 60 -u f2buser");
-            Console.WriteLine("  # service startup command for direct communication with F2BLogAnalyzer with f2buser privileges");
-            Console.WriteLine("  F2BFirewall.exe run -h . -p F2BFWProvider -u f2buser");
+            Console.WriteLine("  # service startup command for F2BQueue running on HOST");
+            Console.WriteLine("  F2BFirewall.exe run -H HOST -r F2BSubscription -i 240 -n 150");
+            Console.WriteLine("  # service startup command for direct communication with F2BLogAnalyzer");
+            Console.WriteLine("  F2BFirewall.exe run -H . -p F2BProducer");
             Console.WriteLine("  # register F2BFirewall service and allow \"DOMAIN\\username\" to modify firewall filters");
-            Console.WriteLine("  F2BFirewall.exe install [-u DOMAIN\\username] [-h HOST] [-r F2BFWRegistration] [-i 60] [-n 30]");
+            Console.WriteLine("  F2BFirewall.exe install [-u DOMAIN\\username] [-h HOST] [-p F2BProvider] [-r F2BFWRegistration] [-i 60] [-n 30] [-l INFO] [-g c:\\F2B\\F2BFirewall.log]");
             Console.WriteLine("  # unregister F2BFirewall service and remove \"DOMAIN\\username\" privileges for firewall filters");
             Console.WriteLine("  F2BFirewall.exe uninstall [-u DOMAIN\\username]");
             Console.WriteLine("  # add privileges F2B firewall rules to \"DOMAIN\\username\"");
@@ -96,6 +96,7 @@ namespace F2B
             Console.WriteLine("  sc create " + Service.NAME + " binPath= \"C:\\path\\to\\executable\\F2BFirewall.exe\" DisplayName= \"" + Service.DISPLAY + "\" type= own start= auto depend= eventlog/BFE/MSMQ");
             Console.WriteLine("  sc description " + Service.NAME + " \"" + Service.DESCR + "\"");
             Console.WriteLine("  sc queryex " + Service.NAME);
+            Console.WriteLine("  sc qc " + Service.NAME);
             Console.WriteLine("  sc start " + Service.NAME);
             Console.WriteLine("  sc stop " + Service.NAME);
             Console.WriteLine("  sc delete " + Service.NAME);
