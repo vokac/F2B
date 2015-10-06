@@ -598,6 +598,10 @@ namespace F2B.processors
             if (evtlog.Address.IsIPv4MappedToIPv6)
             {
                 prefix = ipv4_prefix;
+                if (prefix <= 32)
+                {
+                    prefix += 96;
+                }
             }
             if (prefix != 128)
             {
