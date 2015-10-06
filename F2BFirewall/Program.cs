@@ -28,6 +28,7 @@ namespace F2B
         {
             Console.WriteLine("{0} command line arguments:", Process.GetCurrentProcess().ProcessName);
             Console.WriteLine("  help                show this help");
+            Console.WriteLine("  examples            show command line examples");
             Console.WriteLine("  run                 execute service interactively");
             Console.WriteLine("  install             apply required WPF modifications and register F2BFW service");
             Console.WriteLine("                      (use \"user\" to specify unprivileged account for F2BFW service)");
@@ -43,16 +44,6 @@ namespace F2B
             Console.WriteLine("  list-privileges     show WFP security descriptors");
             Console.WriteLine("  add-privileges      add user to WFP security descriptors");
             Console.WriteLine("  remove-privileges   remove user from WFP security descriptors");
-#if DEBUG
-            Console.WriteLine("Additional command line arguments in debug build:");
-            Console.WriteLine("  hash                test hash function");
-            Console.WriteLine("  wfp                 test Firewall module");
-            Console.WriteLine("  wfpperf             test Firewall module performance (add/remove 100k rules)");
-            Console.WriteLine("  wfpperfraw          test raw wfp performance (add/remove 100k rules)");
-            Console.WriteLine("  wfpdump             dump all providers, layers, sublayers, filters");
-            Console.WriteLine("  mq                  test MsmqComm module");
-            Console.WriteLine("  mqrule              send/receive FWDATA rule");
-#endif
             Console.WriteLine("Options:");
             Console.WriteLine("  -h          show this help");
             Console.WriteLine("  -l          log severity level (INFO, WARN, ERROR)");
@@ -70,6 +61,10 @@ namespace F2B
             Console.WriteLine("  -t          permit filter rule");
             Console.WriteLine("  -s          persistent filter rule (survive machine reboot)");
             Console.WriteLine("  -f	filterId filter identifier");
+        }
+
+        public static void Examples()
+        {
             Console.WriteLine("Examples:");
             Console.WriteLine("  # service startup command for F2BQueue running on HOST with f2buser privileges");
             Console.WriteLine("  F2BFirewall.exe run -h HOST -r F2BFWRegistration -i 60 -u f2buser");
@@ -318,6 +313,10 @@ namespace F2B
                 if (command.ToLower() == "help")
                 {
                     Usage();
+                }
+                else if (command.ToLower() == "examples")
+                {
+                    Examples();
                 }
                 else if (command.ToLower() == "install" || command.ToLower() == "uninstall")
                 {

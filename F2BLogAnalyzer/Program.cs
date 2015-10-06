@@ -27,6 +27,7 @@ namespace F2B
         {
             Console.WriteLine("{0} command line arguments:", Process.GetCurrentProcess().ProcessName);
             Console.WriteLine("  help                  show this help");
+            Console.WriteLine("  examples              show command line examples");
             Console.WriteLine("  run                   execute service interactively");
             Console.WriteLine("  install               install as windows service");
             Console.WriteLine("  uninstall             uninstall windows service");
@@ -38,6 +39,10 @@ namespace F2B
             Console.WriteLine("  -g, --log-file file   log file");
             Console.WriteLine("  -c, --config file     use this configuration (default: F2BLogAnalyzer.exe.config)");
             Console.WriteLine("  -u, --user user       use given user to run this service");
+        }
+
+        public static void Examples()
+        {
             Console.WriteLine("Examples:");
             Console.WriteLine("  rem Interactive run for debuging");
             Console.WriteLine("  F2BLogAnalyzer.exe run -c F2BLogAnalyzer.config");
@@ -169,6 +174,10 @@ namespace F2B
                 if (command.ToLower() == "help")
                 {
                     Usage();
+                }
+                else if (command.ToLower() == "examples")
+                {
+                    Examples();
                 }
                 else if (command.ToLower() == "run")
                 {
