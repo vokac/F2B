@@ -387,7 +387,7 @@ namespace F2B
         }
 
 
-        private void Add(string filter, long expiration, byte[] hash, FirewallConditions conds, UInt64 weight, bool permit, Func<string, FirewallConditions, UInt64, bool, ulong> AddFilter)
+        private void Add(string filter, long expiration, byte[] hash, FirewallConditions conds, UInt64 weight, bool permit, bool persistent, Func<string, FirewallConditions, UInt64, bool, bool, ulong> AddFilter)
         {
             long currtime = DateTime.UtcNow.Ticks;
             string filterName = FwData.EncodeName(expiration, hash);
@@ -427,7 +427,7 @@ namespace F2B
                         Log.Info("Replace old filter #" + filterIdOld + " with increased expiration time (c/o/e=" + currtime + "/" + expirationOld + "/" + expiration + ")");
                         try
                         {
-                            filterId = AddFilter(filterName, conds, weight, permit);
+                            filterId = AddFilter(filterName, conds, weight, permit, persistent);
                             Log.Info("Added filter rule #" + filterId + ": " + filter);
                             F2B.Firewall.Instance.Remove(filterIdOld);
                             Log.Info("Removed filter rule #" + filterIdOld);
@@ -452,7 +452,7 @@ namespace F2B
                     {
                         try
                         {
-                            filterId = AddFilter(filterName, conds, weight, permit);
+                            filterId = AddFilter(filterName, conds, weight, permit, persistent);
                             Log.Info("Added new filter #" + filterId + ": " + filter);
                         }
                         catch (FirewallException ex)
@@ -483,7 +483,7 @@ namespace F2B
         }
 
 
-        public void Add(FwData fwdata, UInt64 weight = 0, bool permit = false)
+        public void Add(FwData fwdata, UInt64 weight = 0, bool permit = false, bool persistent = false)
         {
             long expiration = fwdata.Expire;
             long currtime = DateTime.UtcNow.Ticks;
@@ -514,7 +514,7 @@ namespace F2B
                 byte[] hash4 = new byte[hash.Length];
                 hash.CopyTo(hash4, 0);
                 hash4[hash4.Length - 1] &= 0xfe;
-                Add(fwdata.ToString(), expiration, hash4, conds, weight, permit, F2B.Firewall.Instance.AddIPv4);
+                Add(fwdata.ToString(), expiration, hash4, conds, weight, permit, persistent, F2B.Firewall.Instance.AddIPv4);
             }
 
             // IPv6 filter layer
@@ -523,7 +523,7 @@ namespace F2B
                 byte[] hash6 = new byte[hash.Length];
                 hash.CopyTo(hash6, 0);
                 hash6[hash6.Length - 1] |= 0x01;
-                Add(fwdata.ToString(), expiration, hash6, conds, weight, permit, F2B.Firewall.Instance.AddIPv6);
+                Add(fwdata.ToString(), expiration, hash6, conds, weight, permit, persistent, F2B.Firewall.Instance.AddIPv6);
             }
         }
 

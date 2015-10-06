@@ -1148,7 +1148,7 @@ void Firewall::DumpPrivileges()
 
 
 // Add new filtering rule
-UInt64 Firewall::Add(String^ name, IPAddress^ addr, int prefix, UInt64 weight, bool permit)
+UInt64 Firewall::Add(String^ name, IPAddress^ addr, int prefix, UInt64 weight, bool permit, bool persistent)
 {
 	OutputDebugString(L"Firewall::Add(name, addr, prefix)");
 
@@ -1180,7 +1180,7 @@ UInt64 Firewall::Add(String^ name, IPAddress^ addr, int prefix, UInt64 weight, b
 		fwpAddr4AndMask.addr = htonl(*((u_long *)&pAddrBytes[0]));
 		fwpAddr4AndMask.mask = 0xffffffff << (32 - prefix);
 
-		return this->Add(name, FWPM_LAYER_INBOUND_IPPACKET_V4, fwpFilterCondition, 1, weight, permit);
+		return this->Add(name, FWPM_LAYER_INBOUND_IPPACKET_V4, fwpFilterCondition, 1, weight, permit, persistent);
 	}
 	else
 	{
@@ -1195,11 +1195,11 @@ UInt64 Firewall::Add(String^ name, IPAddress^ addr, int prefix, UInt64 weight, b
 		CopyMemory(&fwpAddr6AndMask.addr, pAddrBytes, 16);
 		fwpAddr6AndMask.prefixLength = prefix;
 
-		return this->Add(name, FWPM_LAYER_INBOUND_IPPACKET_V6, fwpFilterCondition, 1, weight, permit);
+		return this->Add(name, FWPM_LAYER_INBOUND_IPPACKET_V6, fwpFilterCondition, 1, weight, permit, persistent);
 	}
 }
 
-UInt64 Firewall::Add(String^ name, IPAddress^ addrLow, IPAddress^ addrHigh, UInt64 weight, bool permit)
+UInt64 Firewall::Add(String^ name, IPAddress^ addrLow, IPAddress^ addrHigh, UInt64 weight, bool permit, bool persistent)
 {
 	OutputDebugString(L"Firewall::Add(name, addrLow, addrLast)");
 
@@ -1237,7 +1237,7 @@ UInt64 Firewall::Add(String^ name, IPAddress^ addrLow, IPAddress^ addrHigh, UInt
 		fwpRange.valueLow.uint32 = htonl(*((u_long *)&pAddrLowBytes[0]));
 		fwpRange.valueHigh.uint32 = htonl(*((u_long *)&pAddrHighBytes[0]));
 
-		return this->Add(name, FWPM_LAYER_INBOUND_IPPACKET_V4, fwpFilterCondition, 1, weight, permit);
+		return this->Add(name, FWPM_LAYER_INBOUND_IPPACKET_V4, fwpFilterCondition, 1, weight, permit, persistent);
 	}
 	else
 	{
@@ -1252,13 +1252,13 @@ UInt64 Firewall::Add(String^ name, IPAddress^ addrLow, IPAddress^ addrHigh, UInt
 		CopyMemory(&fwpRange.valueLow.byteArray16, pAddrLowBytes, 16);
 		CopyMemory(&fwpRange.valueHigh.byteArray16, pAddrHighBytes, 16);
 
-		return this->Add(name, FWPM_LAYER_INBOUND_IPPACKET_V6, fwpFilterCondition, 1, weight, permit);
+		return this->Add(name, FWPM_LAYER_INBOUND_IPPACKET_V6, fwpFilterCondition, 1, weight, permit, persistent);
 	}
 }
 
 //UInt64 Firewall::Add(String^ name, List<Object^>^ rules) { return 0; }
 //UInt64 Add(String^ name, char *data, UInt32 size);
-UInt64 Firewall::AddIPv4(String^ name, FirewallConditions^ conditions, UInt64 weight, bool permit)
+UInt64 Firewall::AddIPv4(String^ name, FirewallConditions^ conditions, UInt64 weight, bool permit, bool persistent)
 {
 	OutputDebugString(L"Firewall::AddIPv4(String, FirewallConditions)");
 
@@ -1268,9 +1268,9 @@ UInt64 Firewall::AddIPv4(String^ name, FirewallConditions^ conditions, UInt64 we
 		throw gcnew System::ArgumentException("Firewall::AddIPv4: no conditions");
 	}
 
-	return this->Add(name, conditions->LayerIPv4(), *conditions->GetIPv4(), conditions->CountIPv4(), weight, permit);
+	return this->Add(name, conditions->LayerIPv4(), *conditions->GetIPv4(), conditions->CountIPv4(), weight, permit, persistent);
 }
-UInt64 Firewall::AddIPv6(String^ name, FirewallConditions^ conditions, UInt64 weight, bool permit)
+UInt64 Firewall::AddIPv6(String^ name, FirewallConditions^ conditions, UInt64 weight, bool permit, bool persistent)
 {
 	OutputDebugString(L"Firewall::AddIPv6(String, FirewallConditions)");
 
@@ -1280,10 +1280,10 @@ UInt64 Firewall::AddIPv6(String^ name, FirewallConditions^ conditions, UInt64 we
 		throw gcnew System::ArgumentException("Firewall::AddIPv6: no conditions");
 	}
 
-	return this->Add(name, conditions->LayerIPv6(), *conditions->GetIPv6(), conditions->CountIPv6(), weight, permit);
+	return this->Add(name, conditions->LayerIPv6(), *conditions->GetIPv6(), conditions->CountIPv6(), weight, permit, persistent);
 }
 
-UInt64 Firewall::Add(String^ name, const GUID &layerKey, FWPM_FILTER_CONDITION &fwpFilterCondition, UInt32 iFilterCondition, UInt64 weight, bool permit)
+UInt64 Firewall::Add(String^ name, const GUID &layerKey, FWPM_FILTER_CONDITION &fwpFilterCondition, UInt32 iFilterCondition, UInt64 weight, bool permit, bool persistent)
 {
 	OutputDebugString(L"Firewall::Add(String, &FWPM_FILTER_CONDITION)");
 
@@ -1299,7 +1299,9 @@ UInt64 Firewall::Add(String^ name, const GUID &layerKey, FWPM_FILTER_CONDITION &
 	fwpFilter.layerKey = layerKey;
 	fwpFilter.subLayerKey = F2BFW_SUBLAYER_KEY;
 	fwpFilter.providerKey = (GUID*)&F2BFW_PROVIDER_KEY;
-	//fwpFilter.flags = FWPM_FILTER_FLAG_PERSISTENT;
+	fwpFilter.flags = FWPM_FILTER_FLAG_NONE;
+	if (persistent)
+		fwpFilter.flags |= FWPM_FILTER_FLAG_PERSISTENT;
 	if (permit)
 		fwpFilter.action.type = FWP_ACTION_PERMIT;
 	else

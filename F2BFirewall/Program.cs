@@ -68,6 +68,7 @@ namespace F2B
             Console.WriteLine("  -e	expir    expiration time in windows UTC time ticks");
             Console.WriteLine("  -w weight   filter rule priority");
             Console.WriteLine("  -t          permit filter rule");
+            Console.WriteLine("  -s          persistent filter rule (survive machine reboot)");
             Console.WriteLine("  -f	filterId filter identifier");
             Console.WriteLine("Examples:");
             Console.WriteLine("  # service startup command for F2BQueue running on HOST with f2buser privileges");
@@ -85,11 +86,11 @@ namespace F2B
             Console.WriteLine("  # list all F2B filter rules");
             Console.WriteLine("  F2BFirewall.exe list-filters");
             Console.WriteLine("  # add F2B firewall filter for 192.0.2.123/24 with 5 minute expiration");
-            Console.WriteLine("  F2BFirewall.exe add-filter -a 192.0.2.123/24 -e " + (DateTime.UtcNow.Ticks + 5 * 60 * TimeSpan.TicksPerSecond));
+            Console.WriteLine("  F2BFirewall.exe add-filter --address 192.0.2.123/24 --expiration " + (DateTime.UtcNow.Ticks + 5 * 60 * TimeSpan.TicksPerSecond));
             Console.WriteLine("  # add pernament F2B firewall filter with hight priority which permits access from 192.0.2.234");
-            Console.WriteLine("  F2BFirewall.exe add-filter -a 192.0.2.234 -w 16 -t");
+            Console.WriteLine("  F2BFirewall.exe add-filter --address 192.0.2.234 --weight 16 --permit --persistent");
             Console.WriteLine("  # remove filter with ID 12345678 (only F2B rules can be removed)");
-            Console.WriteLine("  F2BFirewall.exe remove-filter -f 12345678");
+            Console.WriteLine("  F2BFirewall.exe remove-filter --filter-id 12345678");
             Console.WriteLine("  # show debug info using DbgView from SysInternals");
             Console.WriteLine("  DbgView.exe");
             Console.WriteLine("Manage service manually:");
@@ -127,6 +128,7 @@ namespace F2B
             long expiration = 0;
             UInt64 weight = 0;
             bool permit = false;
+            bool persistent = false;
             UInt64 filterId = 0;
 
             while (i < args.Length)
@@ -263,6 +265,10 @@ namespace F2B
                 else if (param == "-t" || param == "-permit" || param == "--permit")
                 {
                     permit = true;
+                }
+                else if (param == "-s" || param == "-persistent" || param == "--persistent")
+                {
+                    persistent = true;
                 }
                 else if (param == "-f" || param == "-filter-id" || param == "--filter-id")
                 {
@@ -580,8 +586,8 @@ namespace F2B
 
                     if (expiration == 0)
                     {
-                        string filterName = "F2B " + address + " with no expiration";
-                        UInt64 filterIdNew = F2B.Firewall.Instance.Add(filterName, addr, prefix, weight, permit);
+                        string filterName = "F2B " + (permit ? "permit " : "block ") + address + " with no expiration" + (persistent ? " (persistent rule)" : "");
+                        UInt64 filterIdNew = F2B.Firewall.Instance.Add(filterName, addr, prefix, weight, permit, persistent);
                         Log.Info("Added new filter #" + filterIdNew + " with name: " + filterName);
                     }
                     else
@@ -618,7 +624,7 @@ namespace F2B
                         //    Log.Info("Added new IPv6 filter #" + filterIdNew + " for " + addr + "/" + prefix + " with encoded name: " + filterName);
                         //}
 
-                        FwManager.Instance.Add(fwdata, weight, permit);
+                        FwManager.Instance.Add(fwdata, weight, permit, persistent);
                     }
                 }
                 else if (command.ToLower() == "remove-filter")

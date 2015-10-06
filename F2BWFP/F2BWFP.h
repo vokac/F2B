@@ -227,20 +227,20 @@ namespace F2B {
 #endif
 
 		// Add new filtering rule
-		UInt64 Add(String^ name, IPAddress^ addr) { return Add(name, addr, 0, false); };
-		UInt64 Add(String^ name, IPAddress^ addr, UInt64 weight, bool permit) { return Add(name, addr, 128); };
+		UInt64 Add(String^ name, IPAddress^ addr) { return Add(name, addr, 0, false, false); };
+		UInt64 Add(String^ name, IPAddress^ addr, UInt64 weight, bool permit, bool persistent) { return Add(name, addr, 128); };
 		UInt64 Add(String^ name, IPAddress^ addr, int prefix) { return Add(name, addr, prefix, 0, false); };
-		UInt64 Add(String^ name, IPAddress^ addr, int prefix, UInt64 weight, bool permit);
-		UInt64 Add(String^ name, IPAddress^ addrFirst, IPAddress^ addrLast) { return Add(name, addrFirst, addrLast, 0, false); };
-		UInt64 Add(String^ name, IPAddress^ addrFirst, IPAddress^ addrLast, UInt64 weight, bool permit);
+		UInt64 Add(String^ name, IPAddress^ addr, int prefix, UInt64 weight, bool permit, bool persistent);
+		UInt64 Add(String^ name, IPAddress^ addrFirst, IPAddress^ addrLast) { return Add(name, addrFirst, addrLast, 0, false, false); };
+		UInt64 Add(String^ name, IPAddress^ addrFirst, IPAddress^ addrLast, UInt64 weight, bool permit, bool persistent);
 		//UInt64 Add(String^ name, List<Object^>^ rules);
 		//UInt64 Add(String^ name, char *data, UInt32 size);
-		UInt64 AddIPv4(String^ name, FirewallConditions^ conditions) { return AddIPv4(name, conditions, 0, false); };
-		UInt64 AddIPv4(String^ name, FirewallConditions^ conditions, UInt64 weight, bool permit);
-		UInt64 AddIPv6(String^ name, FirewallConditions^ conditions) { return AddIPv6(name, conditions, 0, false); };
-		UInt64 AddIPv6(String^ name, FirewallConditions^ conditions, UInt64 weight, bool permit);
+		UInt64 AddIPv4(String^ name, FirewallConditions^ conditions) { return AddIPv4(name, conditions, 0, false, false); };
+		UInt64 AddIPv4(String^ name, FirewallConditions^ conditions, UInt64 weight, bool permit, bool persistent);
+		UInt64 AddIPv6(String^ name, FirewallConditions^ conditions) { return AddIPv6(name, conditions, 0, false, false); };
+		UInt64 AddIPv6(String^ name, FirewallConditions^ conditions, UInt64 weight, bool permit, bool persistent);
 		//UInt64 Add(String^ name, const GUID &layerKey, FWPM_FILTER_CONDITION &fwpFilterCondition, UInt32 iFilterCondition) { return Add(name, layerKey, fwpFilterCondition, iFilterCondition, 0, false); };
-		UInt64 Add(String^ name, const GUID &layerKey, FWPM_FILTER_CONDITION &fwpFilterCondition, UInt32 iFilterCondition, UInt64 weight, bool permit);
+		UInt64 Add(String^ name, const GUID &layerKey, FWPM_FILTER_CONDITION &fwpFilterCondition, UInt32 iFilterCondition, UInt64 weight, bool permit, bool persistent);
 
 		// Remove filter with defined Id
 		void Remove(UInt64 id);
