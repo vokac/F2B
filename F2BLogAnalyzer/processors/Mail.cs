@@ -109,7 +109,14 @@ namespace F2B.processors
             client.UseDefaultCredentials = false;
             client.Host = config.Smtp.Host.Value;
             client.EnableSsl = config.Smtp.Ssl.Value;
-            // client.Credentials
+            if (!string.IsNullOrEmpty(config.Smtp.Username.Value) && !string.IsNullOrEmpty(config.Smtp.Password.Value))
+            {
+                if (!client.EnableSsl)
+                {
+                    throw new InvalidDataException("Can't send SMTP AUTH email without SSL encryption");
+                }
+                client.Credentials = new System.Net.NetworkCredential(config.Smtp.Username.Value, config.Smtp.Password.Value);
+            }
             client.Send(mail);
 
 #if DEBUG

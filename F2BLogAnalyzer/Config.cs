@@ -823,6 +823,26 @@ namespace F2B
                 return (ConfigurationTextElement<bool>)this["ssl"];
             }
         }
+
+        // Get SMTP AUTH username.
+        [ConfigurationProperty("username")]
+        public ConfigurationTextElement<string> Username
+        {
+            get
+            {
+                return (ConfigurationTextElement<string>)this["username"];
+            }
+        }
+
+        // Get SMTP AUTH password.
+        [ConfigurationProperty("password")]
+        public ConfigurationTextElement<string> Password
+        {
+            get
+            {
+                return (ConfigurationTextElement<string>)this["password"];
+            }
+        }
         #endregion
     }
 
