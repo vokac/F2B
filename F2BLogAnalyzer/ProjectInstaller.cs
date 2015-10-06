@@ -47,6 +47,15 @@ namespace F2B
 
         protected override void OnBeforeInstall(System.Collections.IDictionary savedState)
         {
+            if (Context.Parameters.ContainsKey("f2bLogLevel"))
+            {
+                Context.Parameters["assemblypath"] = AppendPathParameter(Context.Parameters["assemblypath"], "/log-level " + Context.Parameters["f2bLogLevel"]);
+            }
+            if (Context.Parameters.ContainsKey("f2bLogFile"))
+            {
+                Context.Parameters["assemblypath"] = AppendPathParameter(Context.Parameters["assemblypath"], "/log-file " + Context.Parameters["f2bLogFile"]);
+            }
+
             if (Context.Parameters.ContainsKey("f2bUser") && Context.Parameters["f2bUser"] != "")
             {
                 string user = Context.Parameters["f2bUser"];

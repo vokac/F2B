@@ -102,9 +102,17 @@ namespace F2B
                         i++;
                         switch (args[i].ToUpper())
                         {
-                            case "INFO": Log.Level = EventLogEntryType.Information; break;
-                            case "WARN": Log.Level = EventLogEntryType.Warning; break;
-                            case "ERROR": Log.Level = EventLogEntryType.Error; break;
+                            case "INFORMATION":
+                            case "INFO":
+                                Log.Level = EventLogEntryType.Information;
+                                break;
+                            case "WARNING":
+                            case "WARN":
+                                Log.Level = EventLogEntryType.Warning;
+                                break;
+                            case "ERROR":
+                                Log.Level = EventLogEntryType.Error;
+                                break;
                         }
                     }
                 }
@@ -114,6 +122,7 @@ namespace F2B
                     {
                         i++;
                         Log.File = args[i];
+                        Log.Dest = Log.Destinations.File;
                     }
                 }
                 else if (param == "-c" || param == "-config" || param == "--config")
@@ -217,7 +226,10 @@ namespace F2B
                     command = "help";
                 }
 
-                Log.Dest = Log.Destinations.Console;
+                if ((Log.Dest & Log.Destinations.File) == 0)
+                {
+                    Log.Dest = Log.Destinations.Console;
+                }
                 Log.Info("F2BFirewall in interactive mode executing command: " + command);
             }
 
@@ -230,6 +242,15 @@ namespace F2B
                 else if (command.ToLower() == "install" || command.ToLower() == "uninstall")
                 {
                     List<string> l = new List<string>();
+                    if ((Log.Dest & Log.Destinations.EventLog) != 0)
+                    {
+                        l.Add(string.Format("f2bLogLevel={0}", Log.Level));
+                    }
+                    if ((Log.Dest & Log.Destinations.File) != 0 && !string.IsNullOrEmpty(Log.File))
+                    {
+                        l.Add(string.Format("f2bLogLevel={0}", Log.Level));
+                        l.Add(string.Format("f2bLogFile={0}", Log.File));
+                    }
                     if (StateFile != null)
                     {
                         l.Add(string.Format("f2bState={0}", StateFile));
