@@ -816,7 +816,7 @@ namespace F2B
         public void Dump()
         {
             Log.Info("Dump service debug info");
-            string debugFile = @"c:\f2b.debug";
+            string debugFile = @"c:\f2b\dump.txt";
             StreamWriter output = null;
             try
             {

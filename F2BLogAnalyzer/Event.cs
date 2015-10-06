@@ -261,7 +261,7 @@ namespace F2B
                 {
 #if DEBUG
                     Log.Info(logpfx + "Dump processors debug info");
-                    string debugFile = @"c:\f2b.debug";
+                    string debugFile = @"c:\f2b\dump.txt";
                     StreamWriter output = null;
                     lock (thisInst)
                     {
