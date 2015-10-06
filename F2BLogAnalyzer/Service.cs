@@ -26,7 +26,8 @@ namespace F2B
 
         public Service()
         {
-            InitializeComponent();
+            this.ServiceName = NAME;
+
             ewh = new EventWaitHandle(false, EventResetMode.ManualReset);
         }
 
@@ -208,7 +209,7 @@ namespace F2B
             // create and start log queue
             equeue = new EventQueue(processors);
             equeue.Start();
-
+            
             // create and start log inputs
             inputs = InitializeInputs(equeue);
             foreach (BaseInput input in inputs.Values)
