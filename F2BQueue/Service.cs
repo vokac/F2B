@@ -691,77 +691,93 @@ namespace F2B
         {
             Log.Info("ReadState from " + stateFile);
 
+            if (!File.Exists(stateFile))
+            {
+                Log.Warn("Unable to read state file " + stateFile + ", file doesn't exist");
+                return;
+            }
+
             long currTime = DateTime.UtcNow.Ticks;
 
             lock (thisQDataLock)
             {
-                using (Stream fileStream = new FileStream(stateFile, FileMode.Open, FileAccess.Read))
+                try
                 {
-                    BinaryReader stream = new BinaryReader(new GZipStream(fileStream, CompressionMode.Decompress));
-                    //Stream stream = new GZipStream(fileStream, CompressionMode.Decompress);
-
-                    while (stream.PeekChar() > 0)
+                    using (Stream fileStream = new FileStream(stateFile, FileMode.Open, FileAccess.Read))
+                    using (GZipStream gzipStream = new GZipStream(fileStream, CompressionMode.Decompress))
+                    using (BinaryReader stream = new BinaryReader(gzipStream))
                     {
-                        //byte[] header = new byte[4];
-                        //stream.Read(header, 0, 4);
-                        byte[] header = stream.ReadBytes(4);
-                        int size = IPAddress.NetworkToHostOrder(stream.ReadInt32());
-                        if (header[0] != 'F' || header[1] != '2' && header[2] != 'B')
+                        while (true)
                         {
-                            Log.Error("Invalid message header");
-                            // exception?!
-                        }
-
-                        byte[] data = stream.ReadBytes(size);
-                        if (header[3] != (byte)F2B_DATA_TYPE_ENUM.F2B_FWDATA_TYPE0)
-                        {
-                            Log.Error("Invalid data type: " + header[3]);
-                            continue;
-                        }
-
-                        long expiration = FwData.Expiration(data);
-                        byte[] hash = FwData.GetHash(data);
-
-                        if (expiration < currTime)
-                        {
-                            Log.Info("Invalid message expiration (expired)");
-                            continue;
-                        }
-
-                        // we need unique expiration time to keep all required
-                        // data in simple key/value hashmap structure (and we
-                        // really don't care about different expiration time in ns)
-                        while (qdata.ContainsKey(expiration))
-                        {
-                            expiration++;
-                        }
-
-                        long expirationOld = 0;
-                        if (qhash.TryGetValue(hash, out expirationOld))
-                        {
-                            if (expirationOld > expiration)
+                            //byte[] header = stream.ReadBytes(4);
+                            byte[] header = new byte[4];
+                            if (stream.Read(header, 0, 4) == 0)
                             {
-                                // same data with longer expiration time already exists
+                                // reached end of stream
+                                break;
+                            }
+                            if (header[0] != 'F' || header[1] != '2' && header[2] != 'B')
+                            {
+                                throw new InvalidDataException("Invalid state file structure (F2B data block header not found)");
+                            }
+
+                            int size = IPAddress.NetworkToHostOrder(stream.ReadInt32());
+                            byte[] data = stream.ReadBytes(size);
+                            if (header[3] != (byte)F2B_DATA_TYPE_ENUM.F2B_FWDATA_TYPE0)
+                            {
+                                Log.Error("Invalid data type: " + header[3]);
                                 continue;
                             }
-                        }
 
-                        if (expirationOld != 0 || maxQueueSize == 0 || maxQueueSize > qdata.Count)
-                        {
-                            qdata[expiration] = new Tuple<byte[], byte[]>(data, hash);
-                            qhash[hash] = expiration;
+                            long expiration = FwData.Expiration(data);
+                            byte[] hash = FwData.GetHash(data);
 
-                            if (expirationOld != 0)
+                            if (expiration < currTime)
                             {
-                                // remove data with older expiration time
-                                qdata.Remove(expirationOld);
+                                Log.Info("Invalid message expiration (expired)");
+                                continue;
+                            }
+
+                            // we need unique expiration time to keep all required
+                            // data in simple key/value hashmap structure (and we
+                            // really don't care about different expiration time in ns)
+                            while (qdata.ContainsKey(expiration))
+                            {
+                                expiration++;
+                            }
+
+                            long expirationOld = 0;
+                            if (qhash.TryGetValue(hash, out expirationOld))
+                            {
+                                if (expirationOld > expiration)
+                                {
+                                    // same data with longer expiration time already exists
+                                    continue;
+                                }
+                            }
+
+                            if (expirationOld != 0 || maxQueueSize == 0 || maxQueueSize > qdata.Count)
+                            {
+                                qdata[expiration] = new Tuple<byte[], byte[]>(data, hash);
+                                qhash[hash] = expiration;
+
+                                if (expirationOld != 0)
+                                {
+                                    // remove data with older expiration time
+                                    qdata.Remove(expirationOld);
+                                }
+                            }
+                            else
+                            {
+                                Log.Warn("Reached maximum number of F2B filter rules, skiping filter addition");
                             }
                         }
-                        else
-                        {
-                            Log.Warn("Reached maximum number of F2B filter rules, skiping filter addition");
-                        }
                     }
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Failed to read state from " + stateFile + ": " + ex.Message);
+                    //throw;
                 }
             }
         }
@@ -776,37 +792,44 @@ namespace F2B
 
             lock (thisQDataLock)
             {
-                using (Stream fileStream = new FileStream(stateFile, FileMode.Create, FileAccess.Write))
+                try
                 {
-                    Stream stream = new GZipStream(fileStream, CompressionMode.Compress);
-
-                    //fileStream.WriteByte((byte)'F');
-                    //fileStream.WriteByte((byte)'2');
-                    //fileStream.WriteByte((byte)'B');
-                    //fileStream.WriteByte((byte)F2B_DATA_TYPE_ENUM.F2B_GZIP);
-                    //fileStream.Write(BitConverter.GetBytes(0), 0, 4);
-
-                    // records with highest expiration are written at the beginning
-                    // (in case we use smaler maxQueueSize in next run)
-                    foreach (var item in qdata.Reverse())
+                    using (Stream fileStream = new FileStream(stateFile, FileMode.Create, FileAccess.Write))
+                    using (Stream stream = new GZipStream(fileStream, CompressionMode.Compress))
                     {
-                        // skip expired data
-                        if (item.Key < currTime)
-                            continue;
 
-                        byte[] data = item.Value.Item1;
+                        //fileStream.WriteByte((byte)'F');
+                        //fileStream.WriteByte((byte)'2');
+                        //fileStream.WriteByte((byte)'B');
+                        //fileStream.WriteByte((byte)F2B_DATA_TYPE_ENUM.F2B_GZIP);
+                        //fileStream.Write(BitConverter.GetBytes(0), 0, 4);
 
-                        int msgLenNO = IPAddress.HostToNetworkOrder(data.Length);
-                        stream.Write(msgHeader, 0, msgHeader.Length);
-                        stream.Write(BitConverter.GetBytes(msgLenNO), 0, 4);
-                        stream.Write(data, 0, data.Length);
+                        // records with highest expiration are written at the beginning
+                        // (in case we use smaler maxQueueSize in next run)
+                        foreach (var item in qdata.Reverse())
+                        {
+                            // skip expired data
+                            if (item.Key < currTime)
+                                continue;
+
+                            byte[] data = item.Value.Item1;
+
+                            int msgLenNO = IPAddress.HostToNetworkOrder(data.Length);
+                            stream.Write(msgHeader, 0, msgHeader.Length);
+                            stream.Write(BitConverter.GetBytes(msgLenNO), 0, 4);
+                            stream.Write(data, 0, data.Length);
+                        }
+
+                        // end of message
+                        //fileStream.WriteByte((byte)'F');
+                        //fileStream.WriteByte((byte)'2');
+                        //fileStream.WriteByte((byte)'B');
+                        //fileStream.WriteByte((byte)F2B_DATA_TYPE_ENUM.F2B_EOF);
                     }
-
-                    // end of message
-                    //fileStream.WriteByte((byte)'F');
-                    //fileStream.WriteByte((byte)'2');
-                    //fileStream.WriteByte((byte)'B');
-                    //fileStream.WriteByte((byte)F2B_DATA_TYPE_ENUM.F2B_EOF);
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Failed to write state " + stateFile + ": " + ex.Message);
                 }
             }
         }
