@@ -35,11 +35,11 @@ namespace F2B
             Console.WriteLine("  start               start installed service");
             Console.WriteLine("  stop                stop installed service");
             Console.WriteLine("  list-filters        list all F2BFW filters");
-            Console.WriteLine("  clear-all-filters   remove all F2BFW filters");
-            Console.WriteLine("  clear-expired-filters remove expired F2BFW filters");
-            Console.WriteLine("  clear-unknown-filters remove F2BFW filters with invalid name");
             Console.WriteLine("  add-filter          add F2BFW filte rule");
             Console.WriteLine("  remove-filter       remove F2BFW filter rule with filterId");
+            Console.WriteLine("  remove-all-filters  remove all F2BFW filters");
+            Console.WriteLine("  remove-expired-filters remove expired F2BFW filters");
+            Console.WriteLine("  remove-unknown-filters remove F2BFW filters with invalid name");
             Console.WriteLine("  list-privileges     show WFP security descriptors");
             Console.WriteLine("  add-privileges      add user to WFP security descriptors");
             Console.WriteLine("  remove-privileges   remove user from WFP security descriptors");
@@ -487,74 +487,106 @@ namespace F2B
                 }
                 else if (command.ToLower() == "list-filters")
                 {
-                    foreach (var item in F2B.Firewall.Instance.List())
+                    try
                     {
-                        try
+                        foreach (var item in F2B.Firewall.Instance.List())
                         {
-                            Tuple<long, byte[]> fwname = FwData.DecodeName(item.Value);
-                            string tmp = Convert.ToString(fwname.Item1);
                             try
                             {
-                                DateTime tmpExp = new DateTime(fwname.Item1);
-                                tmp = tmpExp.ToLocalTime().ToString();
+                                Tuple<long, byte[]> fwname = FwData.DecodeName(item.Value);
+                                string tmp = Convert.ToString(fwname.Item1);
+                                try
+                                {
+                                    DateTime tmpExp = new DateTime(fwname.Item1);
+                                    tmp = tmpExp.ToLocalTime().ToString();
+                                }
+                                catch (Exception)
+                                {
+                                }
+                                Console.WriteLine("{0}: {1} (expiration={2}, md5={3})",
+                                    item.Key, item.Value, tmp,
+                                    BitConverter.ToString(fwname.Item2).Replace("-", ":"));
                             }
-                            catch (Exception)
+                            catch (ArgumentException)
                             {
+                                // can't parse filter rule name to F2B structured data
+                                Console.WriteLine("{0}: {1}", item.Key, item.Value);
                             }
-                            Console.WriteLine("{0}: {1} (expiration={2}, md5={3})",
-                                item.Key, item.Value, tmp,
-                                BitConverter.ToString(fwname.Item2).Replace("-", ":"));
-                        }
-                        catch (ArgumentException)
-                        {
-                            // can't parse filter rule name to F2B structured data
-                            Console.WriteLine("{0}: {1}", item.Key, item.Value);
                         }
                     }
+                    catch (FirewallException ex)
+                    {
+                        Log.Error("Unable to list firewall filters: " + ex.Message);
+                        Environment.Exit(1);
+                    }
                 }
-                else if (command.ToLower() == "clear-all-filters")
+                else if (command.ToLower() == "remove-all-filters")
                 {
-                    F2B.Firewall.Instance.Cleanup();
+                    try
+                    {
+                        F2B.Firewall.Instance.Cleanup();
+                    }
+                    catch (FirewallException ex)
+                    {
+                        Log.Error("Unable to remove all firewall filters: " + ex.Message);
+                        Environment.Exit(1);
+                    }
                 }
-                else if (command.ToLower() == "clear-expired-filters")
+                else if (command.ToLower() == "remove-expired-filters")
                 {
                     long currTime = DateTime.UtcNow.Ticks;
 
-                    foreach (var item in F2B.Firewall.Instance.List())
+                    try
                     {
-                        try
+                        foreach (var item in F2B.Firewall.Instance.List())
                         {
-                            Tuple<long, byte[]> fwname = FwData.DecodeName(item.Value);
-                            if (currTime > fwname.Item1)
+                            try
                             {
-                                Log.Info("Remove expired filter #" + item.Key
-                                    + " (expiration=" + fwname.Item1 + ", md5="
-                                    + BitConverter.ToString(fwname.Item2).Replace("-", ":")
-                                    + ")");
+                                Tuple<long, byte[]> fwname = FwData.DecodeName(item.Value);
+                                if (currTime > fwname.Item1)
+                                {
+                                    Log.Info("Remove expired filter #" + item.Key
+                                        + " (expiration=" + fwname.Item1 + ", md5="
+                                        + BitConverter.ToString(fwname.Item2).Replace("-", ":")
+                                        + ")");
+                                    F2B.Firewall.Instance.Remove(item.Key);
+                                }
+                            }
+                            catch (ArgumentException)
+                            {
+                                // can't parse filter rule name to F2B structured data
+                                Log.Info("Unable to parse expiration time from filter #" + item.Key);
+                            }
+                        }
+                    }
+                    catch (FirewallException ex)
+                    {
+                        Log.Error("Unable to remove expired firewall filters: " + ex.Message);
+                        Environment.Exit(1);
+                    }
+                }
+                else if (command.ToLower() == "remove-unknown-filters")
+                {
+                    try
+                    {
+                        foreach (var item in F2B.Firewall.Instance.List())
+                        {
+                            try
+                            {
+                                Tuple<long, byte[]> fwname = FwData.DecodeName(item.Value);
+                            }
+                            catch (ArgumentException)
+                            {
+                                // can't parse filter rule name to F2B structured data
+                                Log.Info("Remove filter #" + item.Key + " with unparsable filter name: " + item.Value);
                                 F2B.Firewall.Instance.Remove(item.Key);
                             }
                         }
-                        catch (ArgumentException)
-                        {
-                            // can't parse filter rule name to F2B structured data
-                            Log.Info("Unable to parse expiration time from filter #" + item.Key);
-                        }
                     }
-                }
-                else if (command.ToLower() == "clear-unknown-filters")
-                {
-                    foreach (var item in F2B.Firewall.Instance.List())
+                    catch (FirewallException ex)
                     {
-                        try
-                        {
-                            Tuple<long, byte[]> fwname = FwData.DecodeName(item.Value);
-                        }
-                        catch (ArgumentException)
-                        {
-                            // can't parse filter rule name to F2B structured data
-                            Log.Info("Remove filter #" + item.Key + " with unparsable filter name: " + item.Value);
-                            F2B.Firewall.Instance.Remove(item.Key);
-                        }
+                        Log.Error("Unable to remove unknown firewall filters: " + ex.Message);
+                        Environment.Exit(1);
                     }
                 }
                 else if (command.ToLower() == "add-filter")
@@ -584,47 +616,55 @@ namespace F2B
                         }
                     }
 
-                    if (expiration == 0)
+                    try
                     {
-                        string filterName = "F2B " + (permit ? "permit " : "block ") + address + " with no expiration" + (persistent ? " (persistent rule)" : "");
-                        UInt64 filterIdNew = F2B.Firewall.Instance.Add(filterName, addr, prefix, weight, permit, persistent);
-                        Log.Info("Added new filter #" + filterIdNew + " with name: " + filterName);
+                        if (expiration == 0)
+                        {
+                            string filterName = "F2B " + (permit ? "permit " : "block ") + address + " with no expiration" + (persistent ? " (persistent rule)" : "");
+                            UInt64 filterIdNew = F2B.Firewall.Instance.Add(filterName, addr, prefix, weight, permit, persistent);
+                            Log.Info("Added new filter #" + filterIdNew + " with name: " + filterName);
+                        }
+                        else
+                        {
+                            FwData fwdata = new FwData(expiration, addr, prefix);
+
+                            // This code doesn't enumerate and check existing F2B firewall rules,
+                            // but it must be updated together with changes in FwManager ... so
+                            // to get consistent behavior in future it is better to use directly
+                            // less optimal function from FwManager
+                            // 
+                            //byte[] hash = fwdata.Hash;
+                            //FirewallConditions conds = fwdata.Conditions();
+                            //
+                            //// IPv4 filter layer
+                            //if (conds.HasIPv4() || (!conds.HasIPv4() && !conds.HasIPv6()))
+                            //{
+                            //    byte[] hash4 = new byte[hash.Length];
+                            //    hash.CopyTo(hash4, 0);
+                            //    hash4[hash4.Length - 1] &= 0xfe;
+                            //    string filterName = FwData.EncodeName(expiration, hash4);
+                            //    UInt64 filterIdNew = F2B.Firewall.Instance.AddIPv4(filterName, conds);
+                            //    Log.Info("Added new IPv4 filter #" + filterIdNew + " for " + addr + "/" + prefix + " with encoded name: " + filterName);
+                            //}
+                            //
+                            //// IPv6 filter layer
+                            //if (conds.HasIPv6() || (!conds.HasIPv4() && !conds.HasIPv6()))
+                            //{
+                            //    byte[] hash6 = new byte[hash.Length];
+                            //    hash.CopyTo(hash6, 0);
+                            //    hash6[hash6.Length - 1] |= 0x01;
+                            //    string filterName = FwData.EncodeName(expiration, hash6);
+                            //    UInt64 filterIdNew = F2B.Firewall.Instance.AddIPv4(filterName, conds);
+                            //    Log.Info("Added new IPv6 filter #" + filterIdNew + " for " + addr + "/" + prefix + " with encoded name: " + filterName);
+                            //}
+
+                            FwManager.Instance.Add(fwdata, weight, permit, persistent);
+                        }
                     }
-                    else
+                    catch (FirewallException ex)
                     {
-                        FwData fwdata = new FwData(expiration, addr, prefix);
-
-                        // This code doesn't enumerate and check existing F2B firewall rules,
-                        // but it must be updated together with changes in FwManager ... so
-                        // to get consistent behavior in future it is better to use directly
-                        // less optimal function from FwManager
-                        // 
-                        //byte[] hash = fwdata.Hash;
-                        //FirewallConditions conds = fwdata.Conditions();
-                        //
-                        //// IPv4 filter layer
-                        //if (conds.HasIPv4() || (!conds.HasIPv4() && !conds.HasIPv6()))
-                        //{
-                        //    byte[] hash4 = new byte[hash.Length];
-                        //    hash.CopyTo(hash4, 0);
-                        //    hash4[hash4.Length - 1] &= 0xfe;
-                        //    string filterName = FwData.EncodeName(expiration, hash4);
-                        //    UInt64 filterIdNew = F2B.Firewall.Instance.AddIPv4(filterName, conds);
-                        //    Log.Info("Added new IPv4 filter #" + filterIdNew + " for " + addr + "/" + prefix + " with encoded name: " + filterName);
-                        //}
-                        //
-                        //// IPv6 filter layer
-                        //if (conds.HasIPv6() || (!conds.HasIPv4() && !conds.HasIPv6()))
-                        //{
-                        //    byte[] hash6 = new byte[hash.Length];
-                        //    hash.CopyTo(hash6, 0);
-                        //    hash6[hash6.Length - 1] |= 0x01;
-                        //    string filterName = FwData.EncodeName(expiration, hash6);
-                        //    UInt64 filterIdNew = F2B.Firewall.Instance.AddIPv4(filterName, conds);
-                        //    Log.Info("Added new IPv6 filter #" + filterIdNew + " for " + addr + "/" + prefix + " with encoded name: " + filterName);
-                        //}
-
-                        FwManager.Instance.Add(fwdata, weight, permit, persistent);
+                        Log.Error("Unable to add firewall filter: " + ex.Message);
+                        Environment.Exit(1);
                     }
                 }
                 else if (command.ToLower() == "remove-filter")
@@ -638,9 +678,9 @@ namespace F2B
                     {
                         F2B.Firewall.Instance.Remove(filterId);
                     }
-                    catch (InvalidOperationException ex)
+                    catch (FirewallException ex)
                     {
-                        Console.WriteLine("ERROR: " + ex.Message);
+                        Log.Error("Unable to remove firewall filter: " + ex.Message);
                         Environment.Exit(1);
                     }
                 }

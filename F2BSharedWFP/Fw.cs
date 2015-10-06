@@ -206,10 +206,21 @@ namespace F2B
                 expire = new Dictionary<byte[], long>(new ByteArrayComparer());
                 cleanup = new SortedDictionary<long, UInt64>();
 
+                IDictionary<ulong, string> filters;
                 long currtime = DateTime.UtcNow.Ticks;
 
+                try
+                {
+                    filters = F2B.Firewall.Instance.List();
+                }
+                catch (FirewallException ex)
+                {
+                    Log.Error("Unable to list F2B firewall filters: " + ex.Message);
+                    return;
+                }
+
                 // get current F2B firewall rules from WFP configuration
-                foreach (var item in F2B.Firewall.Instance.List())
+                foreach (var item in filters)
                 {
                     Tuple<long, byte[]> fwName = null;
                     try
