@@ -34,7 +34,7 @@ namespace F2B.processors
             filename = null;
             size = -1;
             rotate = -1;
-            template = "$Event.Id$\t$Event.Timestamp$\t$Event.Hostname$\t$Event.InputName$\t$Event.SelectorName$\t$Event.Status$\t$Event.RecId$\t$Event.Address$\t$Event.Port$\t$Event.Username$\t$Event.Domain$\n";
+            template = "$Event.Id$\t$Event.Timestamp$\t$Event.Hostname$\t$Event.InputName$\t$Event.SelectorName$\t$Event.Status$\t$Event.RecordId$\t$Event.Address$\t$Event.Port$\t$Event.Username$\t$Event.Domain$\n";
 
             if (config.Options["file"] != null)
             {
