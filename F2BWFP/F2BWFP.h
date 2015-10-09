@@ -222,6 +222,9 @@ namespace F2B {
 		void RemovePrivileges(SecurityIdentifier^ sid);
 
 #ifdef _DEBUG
+		// Just dump F2B WFP structures
+		void DumpWFP();
+
 		// Just dump WFP privileges on objects used by this module
 		void DumpPrivileges();
 #endif

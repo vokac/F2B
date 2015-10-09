@@ -41,6 +41,9 @@ namespace F2B
             Console.WriteLine("  remove-all-filters  remove all F2BFW filters");
             Console.WriteLine("  remove-expired-filters remove expired F2BFW filters");
             Console.WriteLine("  remove-unknown-filters remove F2BFW filters with invalid name");
+            Console.WriteLine("  list-wfp            show F2B WFP structures");
+            Console.WriteLine("  add-wfp             add F2B WFP structures");
+            Console.WriteLine("  remove-wfp          remove F2B WFP structures");
             Console.WriteLine("  list-privileges     show WFP security descriptors");
             Console.WriteLine("  add-privileges      add user to WFP security descriptors");
             Console.WriteLine("  remove-privileges   remove user from WFP security descriptors");
@@ -455,16 +458,72 @@ namespace F2B
                         Environment.Exit(1);
                     }
                 }
+                else if (command.ToLower() == "list-wfp")
+                {
+                    Log.Info("Dump F2B WFP provider and sublyer");
+                    try
+                    {
+                        F2B.Firewall.Instance.DumpWFP();
+                    }
+                    catch (FirewallException ex)
+                    {
+                        Log.Error(ex.Message);
+                        Environment.Exit(1);
+                    }
+                }
+                else if (command.ToLower() == "add-wfp")
+                {
+                    Log.Info("Adding F2B WFP provider and sublyer");
+                    try
+                    {
+                        F2B.Firewall.Instance.Install();
+                    }
+                    catch (FirewallException ex)
+                    {
+                        Log.Error(ex.Message);
+                        Environment.Exit(1);
+                    }
+                }
+                else if (command.ToLower() == "remove-wfp")
+                {
+                    Log.Info("Removing F2B WFP provider and sublyer");
+                    try
+                    {
+                        F2B.Firewall.Instance.Uninstall();
+                    }
+                    catch (FirewallException ex)
+                    {
+                        Log.Error(ex.Message);
+                        Environment.Exit(1);
+                    }
+                }
                 else if (command.ToLower() == "list-privileges")
                 {
-                    F2B.Firewall.Instance.DumpPrivileges();
+                    Log.Info("List F2B WFP privileges");
+                    try
+                    {
+                        F2B.Firewall.Instance.DumpPrivileges();
+                    }
+                    catch (FirewallException ex)
+                    {
+                        Log.Error(ex.Message);
+                        Environment.Exit(1);
+                    }
                 }
                 else if (command.ToLower() == "add-privileges")
                 {
                     if (user != null)
                     {
                         Log.Info("Adding privileges to modify F2B firewall rules to account " + user);
-                        F2B.Firewall.Instance.AddPrivileges(F2B.Sid.Get(user));
+                        try
+                        {
+                            F2B.Firewall.Instance.AddPrivileges(F2B.Sid.Get(user));
+                        }
+                        catch (FirewallException ex)
+                        {
+                            Log.Error(ex.Message);
+                            Environment.Exit(1);
+                        }
                     }
                     else
                     {
@@ -477,7 +536,15 @@ namespace F2B
                     if (user != null)
                     {
                         Log.Info("Removing privileges to modify F2B firewall rules from account " + user);
-                        F2B.Firewall.Instance.RemovePrivileges(F2B.Sid.Get(user));
+                        try
+                        {
+                            F2B.Firewall.Instance.RemovePrivileges(F2B.Sid.Get(user));
+                        }
+                        catch (FirewallException ex)
+                        {
+                            Log.Error(ex.Message);
+                            Environment.Exit(1);
+                        }
                     }
                     else
                     {

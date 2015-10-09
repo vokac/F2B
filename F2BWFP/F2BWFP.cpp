@@ -905,6 +905,76 @@ void Firewall::RemovePrivileges(SecurityIdentifier^ sid)
 
 
 #ifdef _DEBUG
+// Just dump F2B WFP structures
+void Firewall::DumpWFP()
+{
+	OutputDebugString(L"Firewall::DumpWFP");
+	DWORD rc = ERROR_SUCCESS;
+	FWPM_PROVIDER* pProvider = 0;
+	FWPM_SUBLAYER* pSubLayer = 0;
+
+	rc = FwpmProviderGetByKey(*p_hEngineHandle, &F2BFW_PROVIDER_KEY, &pProvider);
+	if (rc == ERROR_SUCCESS)
+	{
+		wprintf(L"F2B Provider %08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX\n",
+			F2BFW_PROVIDER_KEY.Data1, F2BFW_PROVIDER_KEY.Data2, F2BFW_PROVIDER_KEY.Data3,
+			F2BFW_PROVIDER_KEY.Data4[0], F2BFW_PROVIDER_KEY.Data4[1], F2BFW_PROVIDER_KEY.Data4[2], F2BFW_PROVIDER_KEY.Data4[3],
+			F2BFW_PROVIDER_KEY.Data4[4], F2BFW_PROVIDER_KEY.Data4[5], F2BFW_PROVIDER_KEY.Data4[6], F2BFW_PROVIDER_KEY.Data4[7]);
+
+		FWPM_DISPLAY_DATA0 *d = &pProvider->displayData;
+		wprintf(L"  name: %s\n", d->name);
+		if (d->description) wprintf(L"  description: %s\n", d->description);
+		if (pProvider->serviceName) wprintf(L"  service name: %s\n", pProvider->serviceName);
+		wprintf(L"  flags: %04hx\n", pProvider->flags);
+
+		FwpmFreeMemory((VOID**)&pProvider);
+	}
+	else if (rc == FWP_E_PROVIDER_NOT_FOUND)
+	{
+		wprintf(L"F2B Provider %08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX not found\n",
+			F2BFW_PROVIDER_KEY.Data1, F2BFW_PROVIDER_KEY.Data2, F2BFW_PROVIDER_KEY.Data3,
+			F2BFW_PROVIDER_KEY.Data4[0], F2BFW_PROVIDER_KEY.Data4[1], F2BFW_PROVIDER_KEY.Data4[2], F2BFW_PROVIDER_KEY.Data4[3],
+			F2BFW_PROVIDER_KEY.Data4[4], F2BFW_PROVIDER_KEY.Data4[5], F2BFW_PROVIDER_KEY.Data4[6], F2BFW_PROVIDER_KEY.Data4[7]);
+	}
+	else
+	{
+		OutputDebugString(FormatErrorText(L"Firewall::DumpWFP: FwpmProviderGetByKey failed", rc));
+	}
+
+	rc = FwpmSubLayerGetByKey(*p_hEngineHandle, &F2BFW_SUBLAYER_KEY, &pSubLayer);
+	if (rc == ERROR_SUCCESS)
+	{
+		wprintf(L"F2B SubLayer %08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX\n",
+			F2BFW_SUBLAYER_KEY.Data1, F2BFW_SUBLAYER_KEY.Data2, F2BFW_SUBLAYER_KEY.Data3,
+			F2BFW_SUBLAYER_KEY.Data4[0], F2BFW_SUBLAYER_KEY.Data4[1], F2BFW_SUBLAYER_KEY.Data4[2], F2BFW_SUBLAYER_KEY.Data4[3],
+			F2BFW_SUBLAYER_KEY.Data4[4], F2BFW_SUBLAYER_KEY.Data4[5], F2BFW_SUBLAYER_KEY.Data4[6], F2BFW_SUBLAYER_KEY.Data4[7]);
+
+		FWPM_DISPLAY_DATA0 *d = &pSubLayer->displayData;
+		wprintf(L"  name: %s\n", d->name);
+		if (d->description) wprintf(L"  description: %s\n", d->description);
+		wprintf(L"  flags: %04hx\n", pSubLayer->flags);
+		wprintf(L"  weight: %i\n", pSubLayer->weight);
+		if (pSubLayer->providerKey)
+			wprintf(L"  provider: %08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX\n",
+				pSubLayer->providerKey->Data1, pSubLayer->providerKey->Data2, pSubLayer->providerKey->Data3,
+				pSubLayer->providerKey->Data4[0], pSubLayer->providerKey->Data4[1], pSubLayer->providerKey->Data4[2], pSubLayer->providerKey->Data4[3],
+				pSubLayer->providerKey->Data4[4], pSubLayer->providerKey->Data4[5], pSubLayer->providerKey->Data4[6], pSubLayer->providerKey->Data4[7]);
+
+		FwpmFreeMemory((VOID**)&pSubLayer);
+	}
+	else if (rc == FWP_E_SUBLAYER_NOT_FOUND)
+	{
+		wprintf(L"F2B SubLayer %08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX not found\n",
+			F2BFW_SUBLAYER_KEY.Data1, F2BFW_SUBLAYER_KEY.Data2, F2BFW_SUBLAYER_KEY.Data3,
+			F2BFW_SUBLAYER_KEY.Data4[0], F2BFW_SUBLAYER_KEY.Data4[1], F2BFW_SUBLAYER_KEY.Data4[2], F2BFW_SUBLAYER_KEY.Data4[3],
+			F2BFW_SUBLAYER_KEY.Data4[4], F2BFW_SUBLAYER_KEY.Data4[5], F2BFW_SUBLAYER_KEY.Data4[6], F2BFW_SUBLAYER_KEY.Data4[7]);
+	}
+	else
+	{
+		OutputDebugString(FormatErrorText(L"Firewall::DumpWFP: FwpmProviderGetByKey failed", rc));
+	}
+}
+
 // Just dump WFP privileges on objects used by this module
 void Firewall::DumpPrivileges()
 {
