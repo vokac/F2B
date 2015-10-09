@@ -47,6 +47,7 @@ namespace F2B
         private static bool elogExists = false;
         private static StreamWriter writer = null;
         private static object clock = new object();
+        private static object flock = new object();
         #endregion
 
         #region Properties
@@ -73,7 +74,19 @@ namespace F2B
                 }
             }
             elogExists = EventLog.SourceExists("F2B");
+
+            AppDomain.CurrentDomain.ProcessExit += new EventHandler(ProcessExit);
         }
+
+        static void ProcessExit(object sender, EventArgs e)
+        {
+            if (writer != null)
+            {
+                writer.Close();
+            }
+        }
+
+
 
         #region Members
         public static void Logger(string message, EventLogEntryType type,
@@ -139,13 +152,17 @@ namespace F2B
                 {
                     try
                     {
-                        if (writer == null)
+                        lock (flock)
                         {
-                            writer = new StreamWriter(
-                                new FileStream(Log.File, FileMode.Append,
-                                    FileAccess.Write, FileShare.Read));
+                            if (writer == null)
+                            {
+                                writer = new StreamWriter(
+                                    new FileStream(Log.File, FileMode.Append,
+                                        FileAccess.Write, FileShare.Read));
+                            }
+                            writer.WriteLine(msg);
+                            writer.Flush();
                         }
-                        writer.WriteLine(msg);
                     }
                     catch (Exception ex)
                     {

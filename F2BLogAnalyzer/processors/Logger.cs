@@ -20,6 +20,7 @@ namespace F2B.processors
         private long size;
         private int rotate;
         private string template;
+        private bool synchronized;
         #endregion
 
         #region Constructors
@@ -35,6 +36,7 @@ namespace F2B.processors
             size = -1;
             rotate = -1;
             template = "$Event.Id$\t$Event.Timestamp$\t$Event.Hostname$\t$Event.InputName$\t$Event.SelectorName$\t$Event.Status$\t$Event.RecordId$\t$Event.Address$\t$Event.Port$\t$Event.Username$\t$Event.Domain$\n";
+            synchronized = true;
 
             if (config.Options["file"] != null)
             {
@@ -51,6 +53,10 @@ namespace F2B.processors
             if (config.Options["template"] != null)
             {
                 template = config.Options["template"].Value;
+            }
+            if (config.Options["synchronized"] != null)
+            {
+                synchronized = bool.Parse(config.Options["synchronized"].Value);
             }
         }
         #endregion
@@ -157,6 +163,11 @@ namespace F2B.processors
 
                 string data = ExpandTemplateVariables(template, repl);
                 sw.Write(data);
+                
+                if (synchronized)
+                {
+                    sw.Flush();
+                }
 
                 size_curr += data.Length;
             }
