@@ -12,11 +12,11 @@ using namespace System::Security::Permissions;
 // associated with an assembly.
 //
 [assembly:AssemblyTitleAttribute(L"F2BWFP")];
-[assembly:AssemblyDescriptionAttribute(L"")];
+[assembly:AssemblyDescriptionAttribute(L"Fail2ban C++/CLI wrapper for WFP API")];
 [assembly:AssemblyConfigurationAttribute(L"")];
-[assembly:AssemblyCompanyAttribute(L"")];
+[assembly:AssemblyCompanyAttribute(L"JAS")];
 [assembly:AssemblyProductAttribute(L"F2BWFP")];
-[assembly:AssemblyCopyrightAttribute(L"Copyright (c)  2015")];
+[assembly:AssemblyCopyrightAttribute(L"Copyright (c) JAS 2015")];
 [assembly:AssemblyTrademarkAttribute(L"")];
 [assembly:AssemblyCultureAttribute(L"")];
 
