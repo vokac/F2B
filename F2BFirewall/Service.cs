@@ -299,49 +299,52 @@ namespace F2B
         {
             BinaryReader binStream = new BinaryReader(stream);
 
-            byte[] header = binStream.ReadBytes(4);
-            if (header[0] != 'F' || header[1] != '2' || header[2] != 'B')
+            while (true)
             {
-                Log.Warn("ConsumptionThread: Invalid message header");
-                return;
-            }
-            else if (header[3] == (byte)F2B_DATA_TYPE_ENUM.F2B_EOF)
-            {
-                Log.Info("ConsumptionThread: End of FwData");
-                return;
-            }
-            else if (header[3] == (byte)F2B_DATA_TYPE_ENUM.F2B_GZIP)
-            {
-                Log.Info("ConsumptionThread: Processing message compressed FwData");
-
-                int size = IPAddress.NetworkToHostOrder(binStream.ReadInt32()); // record size
-                long pos = stream.Position;
-
-                GZipStream innerStream = new GZipStream(stream, CompressionMode.Decompress);
-                processFwStream(innerStream);
-                innerStream.Dispose();
-
-                if (stream.Position != pos + size)
+                byte[] header = binStream.ReadBytes(4);
+                if (header[0] != 'F' || header[1] != '2' || header[2] != 'B')
                 {
+                    Log.Warn("ConsumptionThread: Invalid message header");
+                    return;
+                }
+                else if (header[3] == (byte)F2B_DATA_TYPE_ENUM.F2B_EOF)
+                {
+                    Log.Info("ConsumptionThread: End of FwData");
+                    return;
+                }
+                else if (header[3] == (byte)F2B_DATA_TYPE_ENUM.F2B_GZIP)
+                {
+                    Log.Info("ConsumptionThread: Processing message compressed FwData");
+
+                    int size = IPAddress.NetworkToHostOrder(binStream.ReadInt32()); // record size
+                    long pos = stream.Position;
+
+                    GZipStream innerStream = new GZipStream(stream, CompressionMode.Decompress);
+                    processFwStream(innerStream);
+                    innerStream.Dispose();
+
+                    if (stream.Position != pos + size)
+                    {
+                        stream.Seek(pos + size, SeekOrigin.Current);
+                    }
+                }
+                if (header[3] == (byte)F2B_DATA_TYPE_ENUM.F2B_FWDATA_TYPE0)
+                {
+                    Log.Info("ConsumptionThread: Processing message FwData");
+
+                    int size = IPAddress.NetworkToHostOrder(binStream.ReadInt32()); // record size
+                    byte[] buf = binStream.ReadBytes(size);
+                    FwData fwdata = new FwData(buf);
+                    F2B.FwManager.Instance.Add(fwdata);
+                }
+                else
+                {
+                    Log.Warn("ConsumptionThread: Unknown message type: " + header[3]);
+
+                    int size = IPAddress.NetworkToHostOrder(binStream.ReadInt32()); // record size
+                    long pos = stream.Position;
                     stream.Seek(pos + size, SeekOrigin.Current);
                 }
-            }
-            if (header[3] == (byte)F2B_DATA_TYPE_ENUM.F2B_FWDATA_TYPE0)
-            {
-                Log.Info("ConsumptionThread: Processing message FwData");
-
-                int size = IPAddress.NetworkToHostOrder(binStream.ReadInt32()); // record size
-                byte[] buf = binStream.ReadBytes(size);
-                FwData fwdata = new FwData(buf);
-                F2B.FwManager.Instance.Add(fwdata);
-            }
-            else
-            {
-                Log.Warn("ConsumptionThread: Unknown message type: " + header[3]);
-
-                int size = IPAddress.NetworkToHostOrder(binStream.ReadInt32()); // record size
-                long pos = stream.Position;
-                stream.Seek(pos + size, SeekOrigin.Current);
             }
         }
 
