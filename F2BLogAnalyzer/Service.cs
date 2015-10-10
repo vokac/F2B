@@ -31,6 +31,11 @@ namespace F2B
             ewh = new EventWaitHandle(false, EventResetMode.ManualReset);
         }
 
+        public bool HasProcessor(string name)
+        {
+            return (processors != null && processors.ContainsKey(name));
+        }
+
         private Dictionary<string, BaseInput> InitializeInputs(EventQueue queue)
         {
             F2BSection config = F2B.Config.Instance;
