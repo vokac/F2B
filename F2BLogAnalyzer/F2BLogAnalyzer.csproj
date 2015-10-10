@@ -82,7 +82,7 @@
     <Compile Include="processors\Fail2banWFP.cs" />
     <Compile Include="processors\Fail2banCmd.cs" />
     <Compile Include="processors\Fail2banMSMQ.cs" />
-    <Compile Include="processors\Filter.cs" />
+    <Compile Include="processors\Input.cs" />
     <Compile Include="processors\Inputname.cs" />
     <Compile Include="processors\Label.cs" />
     <Compile Include="processors\Logger.cs" />

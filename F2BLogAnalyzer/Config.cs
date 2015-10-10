@@ -949,19 +949,6 @@ namespace F2B
             }
         }
 
-        [ConfigurationProperty("filters", IsDefaultCollection = false)]
-        [ConfigurationCollection(typeof(FilterRefCollection),
-            AddItemName = "filter",
-            ClearItemsName = "clear",
-            RemoveItemName = "remove")]
-        public FilterRefCollection Filters
-        {
-            get
-            {
-                return (FilterRefCollection)base["filters"];
-            }
-        }
-
         [ConfigurationProperty("ranges", IsDefaultCollection = false)]
         [ConfigurationCollection(typeof(RangeCollection),
             AddItemName = "range",
@@ -1129,78 +1116,6 @@ namespace F2B
         // Create the element.
         public DescriptionElement()
         { }
-        #endregion
-    }
-
-    
-    // collection of filter reference names
-    //
-    public class FilterRefCollection : ConfigurationElementCollection
-    {
-        #region Overrides
-        protected override ConfigurationElement CreateNewElement()
-        {
-            return new FilterRefElement();
-        }
-
-        protected override object GetElementKey(ConfigurationElement element)
-        {
-            FilterRefElement fe = element as FilterRefElement;
-            return fe.Name;
-        }
-
-        public FilterRefElement this[int index]
-        {
-            get { return base.BaseGet(index) as FilterRefElement; }
-        }
-
-        public new FilterRefElement this[string key]
-        {
-            get { return base.BaseGet(key) as FilterRefElement; }
-        }
-        #endregion
-    }
-
-    
-    // configuration filter reference
-    //
-    public class FilterRefElement : ConfigurationElement
-    {
-        #region Constructors
-        // Create the element.
-        public FilterRefElement()
-        { }
-
-        // Create the element.
-        public FilterRefElement(string name)
-        {
-            Name = name;
-        }
-        #endregion
-
-        #region Overrides
-        public override bool IsReadOnly()
-        {
-            return false;
-        }
-        #endregion
-
-        #region Properties
-        // Get or set the processor name.
-        [ConfigurationProperty("name",
-          DefaultValue = null,
-          IsRequired = true)]
-        public string Name
-        {
-            get
-            {
-                return (string)this["name"];
-            }
-            set
-            {
-                this["name"] = value;
-            }
-        }
         #endregion
     }
 
