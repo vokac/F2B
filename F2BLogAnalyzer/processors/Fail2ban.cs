@@ -173,8 +173,11 @@ namespace F2B.processors
                     return data.Count;
                 }
 
-                data.Enqueue(timestamp);
-                last = timestamp;
+                // NOTE: we should use "timestamp" instead of "now"
+                // but that needs sortable "data" collection
+                // and changes in Cleanup function
+                data.Enqueue(now);
+                last = now;
 
                 return data.Count;
             }
@@ -194,7 +197,7 @@ namespace F2B.processors
         {
             private long findtime;
             private int data;
-            private long last;
+            private long last; // last cleanup
 
             public FailOne(long findtime)
             {
@@ -215,22 +218,40 @@ namespace F2B.processors
 
             private void Cleanup(long now)
             {
-                if (data > 0)
+                // no or empty history (reset last cleanup time)
+                if (data == 0)
                 {
-                    if (last + findtime <= now)
-                    {
-                        data = 0;
-                    }
-                    else
-                    {
-                        double x = data * (double)(now - last) / findtime;
-                        if (x > 1.0)
-                        {
-                            data -= (int)x;
-                            last = now;
-                        }
-                    }
+                    last = now;
+                    return;
                 }
+
+                // history data too old (older than findtime, reset last cleanup time)
+                if (last + findtime <= now)
+                {
+                    data = 0;
+                    last = now;
+                    return;
+                }
+
+                // substract from treshold data number that corresponds
+                // data fraction from last call to cleanup
+                double findtime_fraction = (double)(now - last) / findtime;
+                int substract = (int)(findtime_fraction * data);
+
+                if (substract == 0)
+                {
+                    return;
+                }
+
+                if (substract > data)
+                {
+                    data = 0;
+                }
+                else
+                {
+                    data -= substract;
+                }
+                last = now;
             }
 
             public int Add(long timestamp)
@@ -307,8 +328,8 @@ namespace F2B.processors
                 }
                 else
                 {
-                    long pos = (now - start) % data.Length;
-                    long lastpos = (last - start) % data.Length;
+                    long pos = (long)(((double)(now - start) / findtime) * data.Length) % data.Length;
+                    long lastpos = (long)(((double)(last - start) / findtime) * data.Length) % data.Length;
 
                     if (lastpos != pos)
                     {
@@ -335,9 +356,12 @@ namespace F2B.processors
                     return sum;
                 }
 
-                long pos = (timestamp - start) % data.Length;
+                // NOTE: we should use "timestamp" instead of "now"
+                // but that requires also changes in Cleanup function
+                long pos = (long)(((double)(now - start) / findtime) * data.Length) % data.Length;
                 data[pos]++;
                 sum++;
+                last = now;
 
                 return sum;
             }
