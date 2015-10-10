@@ -201,7 +201,7 @@ namespace F2B
 
         public void Produce(EventEntry item, string processor = null,  bool ignoreQueueSizeLimit = false)
         {
-            if (!ignoreQueueSizeLimit && queue.Count >= limit)
+            if (!ignoreQueueSizeLimit && limit != 0 && queue.Count >= limit)
             {
                 // log new dropped events every minute
                 long currtime = DateTime.Now.Ticks;
