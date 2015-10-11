@@ -9,23 +9,6 @@ using System.Runtime.Caching;
 
 namespace F2B.processors
 {
-    enum F2B_DATA_TYPE_ENUM : byte
-    {
-        F2B_EOF,
-        F2B_GZIP,
-        F2B_FWDATA_TYPE0,
-        F2B_FWQUEUE_SUBSCRIBE0,
-        F2B_FWQUEUE_UNSUBSCRIBE0,
-    };
-
-    enum F2B_FWDATA_TYPE0_ENUM : byte
-    {
-        F2B_FWDATA_EXPIRATION,
-        F2B_FWDATA_IPv4, F2B_FWDATA_IPv4_AND_PREFIX, F2B_FWDATA_IPv4_RANGE,
-        F2B_FWDATA_IPv6, F2B_FWDATA_IPv6_AND_PREFIX, F2B_FWDATA_IPv6_RANGE,
-        F2B_FWDATA_PORT, F2B_FWDATA_PORT_RANGE, F2B_FWDATA_PROTOCOL,
-    };
-
     public class Fail2banMSMQProcessor : BaseProcessor, IThreadSafeProcessor
     {
         #region Fields
