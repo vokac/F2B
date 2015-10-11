@@ -1,6 +1,10 @@
 ﻿#region Imports
 using System;
+using System.Collections.Generic;
+using System.Diagnostics.Eventing.Reader;
 using System.IO;
+using System.Text;
+using System.Text.RegularExpressions;
 #endregion
 
 namespace F2B.processors
@@ -49,5 +53,66 @@ namespace F2B.processors
         public virtual void Debug(StreamWriter output) { }
 #endif
         #endregion
+    }
+
+
+    class ProcessorEventStringTemplate
+    {
+        private IList<Tuple<string, string>> repl;
+        private Regex removeVariable;
+
+        public ProcessorEventStringTemplate(EventEntry evtlog)
+        {
+            repl = new List<Tuple<string, string>>(20 + evtlog.ProcData.Count);
+
+            repl.Add(new Tuple<string, string>("${Environment.MachineName}", System.Environment.MachineName));
+
+            repl.Add(new Tuple<string, string>("${Event.Id}", evtlog.Id.ToString()));
+            if (evtlog.LogData.GetType().IsSubclassOf(typeof(EventRecordWrittenEventArgs)))
+            {
+                EventRecordWrittenEventArgs evtarg = evtlog.LogData as EventRecordWrittenEventArgs;
+                repl.Add(new Tuple<string, string>("${Event.RecordId}", evtarg.EventRecord.Id.ToString()));
+            }
+            else
+            {
+                repl.Add(new Tuple<string, string>("${Event.RecordId}", "0"));
+            }
+            repl.Add(new Tuple<string, string>("${Event.Timestamp}", evtlog.Timestamp.ToString()));
+            repl.Add(new Tuple<string, string>("${Event.Hostname}", (evtlog.Hostname != null ? evtlog.Hostname : "''")));
+            repl.Add(new Tuple<string, string>("${Event.InputName}", evtlog.Input.InputName));
+            repl.Add(new Tuple<string, string>("${Event.SelectorName}", evtlog.Input.SelectorName));
+            repl.Add(new Tuple<string, string>("${Event.Address}", evtlog.Address.ToString()));
+            repl.Add(new Tuple<string, string>("${Event.Port}", evtlog.Port.ToString()));
+            repl.Add(new Tuple<string, string>("${Event.Username}", (evtlog.Username != null ? evtlog.Username : "''")));
+            repl.Add(new Tuple<string, string>("${Event.Domain}", (evtlog.Domain != null ? evtlog.Domain : "''")));
+            repl.Add(new Tuple<string, string>("${Event.Status}", evtlog.Status.ToString()));
+
+            foreach (var item in evtlog.ProcData)
+            {
+                if (item.Value == null) repl.Add(new Tuple<string, string>("${" + item.Key + "}", ""));
+                else repl.Add(new Tuple<string, string>("${" + item.Key + "}", item.Value.ToString()));
+            }
+
+            removeVariable = new Regex(@"\$\{.*?\}");
+        }
+
+        public string ExpandTemplateVariables(string str, string empty = null)
+        {
+            //Regex re = new Regex(@"\$(\w+)\$", RegexOptions.Compiled);
+            //return re.Replace(str, match => repl[match.Groups[1].Value].ToString());
+            StringBuilder output = new StringBuilder(str);
+
+            foreach (Tuple<string, string> kv in repl)
+            {
+                output.Replace(kv.Item1, kv.Item2);
+            }
+
+            if (empty != null)
+            {
+                return removeVariable.Replace(output.ToString(), empty);
+            }
+
+            return output.ToString();
+        }
     }
 }

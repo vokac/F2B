@@ -697,9 +697,17 @@ namespace F2B.processors
                     continue;
 
                 evtlog.SetProcData("Fail2ban.module", Name);
-                evtlog.SetProcData("Fail2ban.address", addr);
+                if (addr.IsIPv4MappedToIPv6)
+                {
+                    evtlog.SetProcData("Fail2ban.address", addr.MapToIPv4());
+                }
+                else
+                {
+                    evtlog.SetProcData("Fail2ban.address", addr);
+                }
                 evtlog.SetProcData("Fail2ban.prefix", prefix);
                 evtlog.SetProcData("Fail2ban.bantime", treshold.Bantime);
+                evtlog.SetProcData("Fail2ban.expiration", now + TimeSpan.FromSeconds(treshold.Bantime).Ticks);
                 evtlog.SetProcData("Fail2ban.treshold", treshold.Name);
                 //evtlog.SetProcData("Fail2ban", Name);
                 //evtlog.SetProcData(Name + ".address", addr);

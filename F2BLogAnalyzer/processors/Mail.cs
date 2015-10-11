@@ -84,41 +84,16 @@ namespace F2B.processors
         public override string Execute(EventEntry evtlog)
         {
             F2BSection config = F2B.Config.Instance;
+            ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
 
-            Dictionary<string, string> repl = new Dictionary<string, string>(10 + evtlog.ProcData.Count);
-            repl["$Event.Id$"] = evtlog.Id.ToString();
-            if (evtlog.LogData.GetType().IsSubclassOf(typeof(EventRecordWrittenEventArgs)))
-            {
-                EventRecordWrittenEventArgs evtarg = evtlog.LogData as EventRecordWrittenEventArgs;
-                repl["$Event.RecordId$"] = evtarg.EventRecord.Id.ToString();
-            }
-            else
-            {
-                repl["$Event.RecordId$"] = "0";
-            }
-            repl["$Event.Timestamp$"] = evtlog.Timestamp.ToString();
-            repl["$Event.Hostname$"] = (evtlog.Hostname != null ? evtlog.Hostname : "''");
-            repl["$Event.InputName$"] = evtlog.Input.InputName;
-            repl["$Event.SelectorName$"] = evtlog.Input.SelectorName;
-            repl["$Event.Address$"] = evtlog.Address.ToString();
-            repl["$Event.Port$"] = evtlog.Port.ToString();
-            repl["$Event.Username$"] = (evtlog.Username != null ? evtlog.Username : "''");
-            repl["$Event.Domain$"] = (evtlog.Domain != null ? evtlog.Domain : "''");
-            repl["$Event.Status$"] = evtlog.Status.ToString();
-            foreach (var item in evtlog.ProcData)
-            {
-                if (item.Value == null) repl["$" + item.Key + "$"] = "";
-                else repl["$" + item.Key + "$"] = item.Value.ToString();
-            }
-
-            string senderEx = ExpandTemplateVariables(sender, repl, "");
-            string recipientEx = Regex.Replace(ExpandTemplateVariables(recipient, repl, ""), @"^,*(.*?),*$", "$1");
-            string subjectEx = ExpandTemplateVariables(subject, repl);
+            string senderEx = tpl.ExpandTemplateVariables(sender, "");
+            string recipientEx = Regex.Replace(tpl.ExpandTemplateVariables(recipient, ""), @"^[ ,]*(.*?)[ ,]*$", "$1");
+            string subjectEx = tpl.ExpandTemplateVariables(subject);
             Log.Info("Sending mail notification (from=" + senderEx + ",to=" + recipientEx + ",subject=" + subjectEx + ")");
 
             MailMessage mail = new MailMessage(senderEx, recipientEx);
             mail.Subject = subjectEx;
-            mail.Body = ExpandTemplateVariables(body, repl);
+            mail.Body = tpl.ExpandTemplateVariables(body);
 
             SmtpClient client = new SmtpClient();
             client.Port = config.Smtp.Port.Value;
@@ -146,27 +121,6 @@ namespace F2B.processors
             output.WriteLine("status sent messages: " + nmsgs);
         }
 #endif
-        #endregion
-
-        #region Methods
-        private string ExpandTemplateVariables(string str, IReadOnlyDictionary<string, string> repl, string empty = null)
-        {
-            //Regex re = new Regex(@"\$(\w+)\$", RegexOptions.Compiled);
-            //return re.Replace(str, match => repl[match.Groups[1].Value].ToString());
-            StringBuilder output = new StringBuilder(str);
-
-            foreach (var kvp in repl)
-            {
-                output.Replace(kvp.Key, kvp.Value);
-            }
-
-            if (empty != null)
-            {
-                return Regex.Replace(output.ToString(), @"\$.*?\$", "");
-            }
-
-            return output.ToString();
-        }
         #endregion
     }
 }

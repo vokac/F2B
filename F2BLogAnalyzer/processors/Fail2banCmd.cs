@@ -29,7 +29,7 @@ namespace F2B.processors
                 path = Environment.ExpandEnvironmentVariables(config.Options["path"].Value);
             }
 
-            args = "add-filter /a %F2B_ADDRESS% /e %F2B_EXPIRATION%";
+            args = "add-filter /address ${Fail2ban.address} /expiration ${Fail2ban.expiration}/${Fail2ban.prefix}";
             if (config.Options["args"] != null)
             {
                 args = Environment.ExpandEnvironmentVariables(config.Options["args"].Value);
@@ -63,7 +63,17 @@ namespace F2B.processors
             {
                 throw new ArgumentException("Missing Fail2ban.prefix, invalid/misspelled configuration?!");
             }
+            if (!evtlog.HasProcData("Fail2ban.bantime"))
+            {
+                throw new ArgumentException("Missing Fail2ban.bantime, invalid/misspelled configuration?!");
+            }
+            if (!evtlog.HasProcData("Fail2ban.expiration"))
+            {
+                throw new ArgumentException("Missing Fail2ban.expiration, invalid/misspelled configuration?!");
+            }
 
+            // NOTE: we should consider to drop bantime from cache information
+            //       and use just expiration
             IPAddress addr = evtlog.GetProcData<IPAddress>("Fail2ban.address");
             int prefix = evtlog.GetProcData<int>("Fail2ban.prefix");
             int btime = evtlog.GetProcData("Fail2ban.bantime", bantime);
@@ -91,24 +101,14 @@ namespace F2B.processors
                 }
             }
 
-            string address;
-            long expiration = DateTime.UtcNow.Ticks + btime * TimeSpan.TicksPerSecond;
-
-            if (addr.IsIPv4MappedToIPv6)
-            {
-                address = addr.MapToIPv4().ToString() + "/" + (prefix - 96);
-            }
-            else
-            {
-                address = addr.ToString() + "/" + prefix;
-            }
+            ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
 
             // run process without creating window
             System.Diagnostics.Process process = new System.Diagnostics.Process();
             System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
             startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
             startInfo.FileName = path;
-            startInfo.Arguments = args.Replace("%F2B_ADDRESS%", address).Replace("%F2B_EXPIRATION%", expiration.ToString());
+            startInfo.Arguments = tpl.ExpandTemplateVariables(args);
             startInfo.UseShellExecute = false;
             //startInfo.EnvironmentVariables.Add("F2B_ADDRESS", address);
             //startInfo.EnvironmentVariables.Add("F2B_EXPIRATION", expiration.ToString());

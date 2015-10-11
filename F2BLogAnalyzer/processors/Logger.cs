@@ -135,33 +135,8 @@ namespace F2B.processors
                     nexceptions = 0;
                 }
 
-                Dictionary<string, string> repl = new Dictionary<string, string>(10 + evtlog.ProcData.Count);
-                repl["$Event.Id$"] = evtlog.Id.ToString();
-                if (evtlog.LogData.GetType().IsSubclassOf(typeof(EventRecordWrittenEventArgs)))
-                {
-                    EventRecordWrittenEventArgs evtarg = evtlog.LogData as EventRecordWrittenEventArgs;
-                    repl["$Event.RecordId$"] = evtarg.EventRecord.Id.ToString();
-                }
-                else
-                {
-                    repl["$Event.RecordId$"] = "0";
-                }
-                repl["$Event.Timestamp$"] = evtlog.Timestamp.ToString();
-                repl["$Event.Hostname$"] = (evtlog.Hostname != null ? evtlog.Hostname : "''");
-                repl["$Event.InputName$"] = evtlog.Input.InputName;
-                repl["$Event.SelectorName$"] = evtlog.Input.SelectorName;
-                repl["$Event.Address$"] = evtlog.Address.ToString();
-                repl["$Event.Port$"] = evtlog.Port.ToString();
-                repl["$Event.Username$"] = (evtlog.Username != null ? evtlog.Username : "''");
-                repl["$Event.Domain$"] = (evtlog.Domain != null ? evtlog.Domain : "''");
-                repl["$Event.Status$"] = evtlog.Status.ToString();
-                foreach (var item in evtlog.ProcData)
-                {
-                    if (item.Value == null) repl["$" + item.Key + "$"] = "";
-                    else repl["$" + item.Key + "$"] = item.Value.ToString();
-                }
-
-                string data = ExpandTemplateVariables(template, repl);
+                ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
+                string data = tpl.ExpandTemplateVariables(template);
                 sw.Write(data);
                 
                 if (synchronized)
@@ -197,22 +172,6 @@ namespace F2B.processors
             output.WriteLine("status sw: " + sw);
         }
 #endif
-        #endregion
-
-        #region Methods
-        private string ExpandTemplateVariables(string str, IReadOnlyDictionary<string, string> repl)
-        {
-            //Regex re = new Regex(@"\$(\w+)\$", RegexOptions.Compiled);
-            //return re.Replace(str, match => repl[match.Groups[1].Value].ToString());
-            StringBuilder output = new StringBuilder(str);
-
-            foreach (var kvp in repl)
-            {
-                output.Replace(kvp.Key, kvp.Value);
-            }
-
-            return output.ToString();
-        }
         #endregion
     }
 }
