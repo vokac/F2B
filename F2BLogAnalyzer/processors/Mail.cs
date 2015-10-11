@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics.Eventing.Reader;
 using System.IO;
+using System.Net;
 using System.Net.Mail;
 using System.Text;
 using System.Text.RegularExpressions;
@@ -18,6 +19,7 @@ namespace F2B.processors
         private string recipient;
         private string subject;
         private string body;
+        private NetworkCredential smtpAuth = null;
 #if DEBUG
         private int nmsgs;
 #endif
@@ -62,6 +64,16 @@ namespace F2B.processors
                 body = config.Options["body"].Value;
             }
 
+            SmtpElement smtpConfig = F2B.Config.Instance.Smtp;
+            if (!string.IsNullOrEmpty(smtpConfig.Username.Value) && !string.IsNullOrEmpty(smtpConfig.Password.Value))
+            {
+                if (!smtpConfig.Ssl.Value)
+                {
+                    throw new InvalidDataException("Can't send SMTP AUTH email without SSL encryption");
+                }
+                smtpAuth = new System.Net.NetworkCredential(smtpConfig.Username.Value, smtpConfig.Password.Value);
+            }
+
 #if DEBUG
             nmsgs = 0;
 #endif
@@ -99,8 +111,13 @@ namespace F2B.processors
                 else repl["$" + item.Key + "$"] = item.Value.ToString();
             }
 
-            MailMessage mail = new MailMessage(sender, recipient);
-            mail.Subject = ExpandTemplateVariables(subject, repl);
+            string senderEx = ExpandTemplateVariables(sender, repl, "");
+            string recipientEx = Regex.Replace(ExpandTemplateVariables(recipient, repl, ""), @"^,*(.*?),*$", "$1");
+            string subjectEx = ExpandTemplateVariables(subject, repl);
+            Log.Info("Sending mail notification (from=" + senderEx + ",to=" + recipientEx + ",subject=" + subjectEx + ")");
+
+            MailMessage mail = new MailMessage(senderEx, recipientEx);
+            mail.Subject = subjectEx;
             mail.Body = ExpandTemplateVariables(body, repl);
 
             SmtpClient client = new SmtpClient();
@@ -109,14 +126,7 @@ namespace F2B.processors
             client.UseDefaultCredentials = false;
             client.Host = config.Smtp.Host.Value;
             client.EnableSsl = config.Smtp.Ssl.Value;
-            if (!string.IsNullOrEmpty(config.Smtp.Username.Value) && !string.IsNullOrEmpty(config.Smtp.Password.Value))
-            {
-                if (!client.EnableSsl)
-                {
-                    throw new InvalidDataException("Can't send SMTP AUTH email without SSL encryption");
-                }
-                client.Credentials = new System.Net.NetworkCredential(config.Smtp.Username.Value, config.Smtp.Password.Value);
-            }
+            client.Credentials = smtpAuth;
             client.Send(mail);
 
 #if DEBUG
@@ -139,7 +149,7 @@ namespace F2B.processors
         #endregion
 
         #region Methods
-        private string ExpandTemplateVariables(string str, IReadOnlyDictionary<string, string> repl)
+        private string ExpandTemplateVariables(string str, IReadOnlyDictionary<string, string> repl, string empty = null)
         {
             //Regex re = new Regex(@"\$(\w+)\$", RegexOptions.Compiled);
             //return re.Replace(str, match => repl[match.Groups[1].Value].ToString());
@@ -148,6 +158,11 @@ namespace F2B.processors
             foreach (var kvp in repl)
             {
                 output.Replace(kvp.Key, kvp.Value);
+            }
+
+            if (empty != null)
+            {
+                return Regex.Replace(output.ToString(), @"\$.*?\$", "");
             }
 
             return output.ToString();

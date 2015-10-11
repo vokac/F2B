@@ -3,6 +3,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net;
+using System.Linq;
 
 #endregion
 
@@ -12,7 +13,10 @@ namespace F2B.processors
     {
         #region Fields
         private string filename;
+        private char[] separator;
         private Dictionary<IPAddress, int> ranges;
+        private Dictionary<string, string> rangesEmail;
+        private SortedSet<int> prefixes;
         private FileSystemWatcher watcher;
         #endregion
 
@@ -44,6 +48,12 @@ namespace F2B.processors
                     + "\" contains invalid path \"" + dirname + "\"");
             }
 
+            separator = "\t;".ToCharArray();
+            if (config.Options["separator"] != null)
+            {
+                separator = config.Options["separator"].Value.ToCharArray();
+            }
+
             // Create a new FileSystemWatcher and set its properties.
             watcher = new FileSystemWatcher();
             watcher.Path = dirname;
@@ -72,8 +82,11 @@ namespace F2B.processors
                     return;
                 }
 
-                // parse IP address ranges from text file
                 Dictionary<IPAddress, int> rangesNew = new Dictionary<IPAddress, int>();
+                Dictionary<string, string> rangesEmailNew = new Dictionary<string, string>();
+                SortedSet<int> prefixesNew = new SortedSet<int>();
+
+                // parse IP address ranges from text file
                 using (StreamReader reader = new StreamReader(filename))
                 {
                     int pos = 0;
@@ -91,12 +104,20 @@ namespace F2B.processors
 
                         try
                         {
-                            Tuple<IPAddress, int> network = Utils.ParseNetwork(line.Trim());
+                            string[] data = line.Split(separator);
+                            Tuple<IPAddress, int> network = Utils.ParseNetwork(data[0].Trim());
                             IPAddress net = Utils.GetNetwork(network.Item1, network.Item2);
-                            if (rangesNew.ContainsKey(net) && rangesNew[net] >= network.Item2)
-                                continue;
 
-                            rangesNew[net] = network.Item2;
+                            if (data.Length > 1)
+                            {
+                                rangesEmailNew[net + "/" + network.Item2] = data[1];
+                                prefixesNew.Add(network.Item2);
+                            }
+
+                            //if (rangesNew.ContainsKey(net) && rangesNew[net] <= network.Item2)
+                            //    continue;
+
+                            //rangesNew[net] = network.Item2;
                         }
                         catch (FormatException ex)
                         {
@@ -109,9 +130,39 @@ namespace F2B.processors
                 }
 
                 // Optimization: remove overlapping IP subranges
+                foreach (int prefix in prefixesNew)
+                {
+                    foreach (KeyValuePair<string, string> rangeEmail in rangesEmailNew)
+                    {
+                        if (!rangeEmail.Key.EndsWith("/" + prefix))
+                            continue;
+
+                        bool exists = false;
+                        Tuple<IPAddress, int> network = Utils.ParseNetwork(rangeEmail.Key);
+
+                        foreach (int prefixSmaler in prefixesNew.Where(u => u <= prefix))
+                        {
+                            IPAddress net = Utils.GetNetwork(network.Item1, prefixSmaler);
+
+                            if (rangesNew.ContainsKey(net))
+                            {
+                                exists = true;
+                                break;
+                            }
+                        }
+
+                        if (!exists)
+                        {
+                            IPAddress net = Utils.GetNetwork(network.Item1, network.Item2);
+                            rangesNew[net] = network.Item2;
+                        }
+                    }
+                }
 
                 // update configuration
                 ranges = rangesNew;
+                rangesEmail = rangesEmailNew;
+                prefixes = prefixesNew;
             }
             catch (Exception ex)
             {
@@ -173,9 +224,27 @@ namespace F2B.processors
             }
 
             if (!contain)
+            {
                 return goto_failure;
-            else
-                return goto_success;
+            }
+
+            // try to find email address for minimum IP range
+            foreach (int prefix in prefixes.Reverse())
+            {
+                string email;
+                IPAddress network = Utils.GetNetwork(evtlog.Address, prefix);
+
+                if (rangesEmail.TryGetValue(network + "/" + prefix, out email))
+                {
+                    evtlog.SetProcData("RangeFile.range", network + "/" + prefix);
+                    evtlog.SetProcData("RangeFile.email", email);
+                    evtlog.SetProcData(Name + ".range", network + "/" + prefix);
+                    evtlog.SetProcData(Name + ".email", email);
+                    break;
+                }
+            }
+
+            return goto_success;
         }
 
 #if DEBUG
@@ -188,6 +257,16 @@ namespace F2B.processors
                 foreach (KeyValuePair<IPAddress, int> range in ranges)
                 {
                     output.WriteLine("config range: {0}/{1}", range.Key, range.Value);
+                }
+                foreach (int prefix in prefixes.Reverse())
+                {
+                    foreach (KeyValuePair<string, string> rangeEmail in rangesEmail)
+                    {
+                        if (!rangeEmail.Key.EndsWith("/" + prefix))
+                            continue;
+
+                        output.WriteLine("config email: {0}[{1}]", rangeEmail.Key, rangeEmail.Value);
+                    }
                 }
             }
             else

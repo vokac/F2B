@@ -12,6 +12,7 @@ namespace F2B.processors
     {
         #region Fields
         private Dictionary<IPAddress, int> ranges;
+        private string email;
         #endregion
 
         #region Constructors
@@ -28,6 +29,12 @@ namespace F2B.processors
                 ranges[network] = range.Network.Item2;
             }
             // Optimization: remove overlapping IP subranges
+
+            email = null;
+            if (config.Options["email"] != null)
+            {
+                email = config.Options["email"].Value;
+            }
         }
         #endregion
 
@@ -48,6 +55,10 @@ namespace F2B.processors
                 if (range.Key.Equals(network))
                 {
                     contain = true;
+                    evtlog.SetProcData("Range.range", range.Key + "/" + range.Value);
+                    evtlog.SetProcData("Range.email", email);
+                    evtlog.SetProcData(Name + ".range", range.Key + "/" + range.Value);
+                    evtlog.SetProcData(Name + ".email", email);
                     break;
                 }
             }
@@ -67,6 +78,8 @@ namespace F2B.processors
             {
                 output.WriteLine("config range: {0}/{1}", range.Key, range.Value);
             }
+
+            output.WriteLine("config email: {0}", email);
         }
 #endif
         #endregion
