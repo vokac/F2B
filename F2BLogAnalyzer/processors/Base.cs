@@ -65,28 +65,45 @@ namespace F2B.processors
         {
             repl = new List<Tuple<string, string>>(20 + evtlog.ProcData.Count);
 
+            // Environment
             repl.Add(new Tuple<string, string>("${Environment.MachineName}", System.Environment.MachineName));
 
+            // F2B Event
             repl.Add(new Tuple<string, string>("${Event.Id}", evtlog.Id.ToString()));
-            if (evtlog.LogData.GetType().IsSubclassOf(typeof(EventRecordWrittenEventArgs)))
+            repl.Add(new Tuple<string, string>("${Event.Timestamp}", evtlog.Timestamp.ToString()));
+            repl.Add(new Tuple<string, string>("${Event.Hostname}", (evtlog.Hostname != null ? evtlog.Hostname : "")));
+            repl.Add(new Tuple<string, string>("${Event.Type}", evtlog.Input.InputType));
+            repl.Add(new Tuple<string, string>("${Event.Input}", evtlog.Input.InputName));
+            repl.Add(new Tuple<string, string>("${Event.Selector}", evtlog.Input.SelectorName));
+            repl.Add(new Tuple<string, string>("${Event.Address}", evtlog.Address.ToString()));
+            repl.Add(new Tuple<string, string>("${Event.Port}", evtlog.Port.ToString()));
+            repl.Add(new Tuple<string, string>("${Event.Username}", (evtlog.Username != null ? evtlog.Username : "")));
+            repl.Add(new Tuple<string, string>("${Event.Domain}", (evtlog.Domain != null ? evtlog.Domain : "")));
+            repl.Add(new Tuple<string, string>("${Event.Status}", evtlog.Status.ToString()));
+            // Event
+            if (evtlog.LogData.GetType() == typeof(EventRecordWrittenEventArgs)
+                || evtlog.LogData.GetType().IsSubclassOf(typeof(EventRecordWrittenEventArgs)))
             {
                 EventRecordWrittenEventArgs evtarg = evtlog.LogData as EventRecordWrittenEventArgs;
-                repl.Add(new Tuple<string, string>("${Event.RecordId}", evtarg.EventRecord.Id.ToString()));
+                EventRecord evtrec = evtarg.EventRecord;
+                repl.Add(new Tuple<string, string>("${Event.EventId}", evtrec.Id.ToString()));
+                repl.Add(new Tuple<string, string>("${Event.RecordId}", evtrec.RecordId.ToString()));
+                repl.Add(new Tuple<string, string>("${Event.TimeCreated}", evtrec.MachineName));
+                repl.Add(new Tuple<string, string>("${Event.MachineName}", evtrec.TimeCreated.Value.Ticks.ToString()));
+                repl.Add(new Tuple<string, string>("${Event.ProviderName}", evtrec.ProviderName));
+                repl.Add(new Tuple<string, string>("${Event.ProcessId}", evtrec.ProcessId.ToString()));
             }
             else
             {
+                repl.Add(new Tuple<string, string>("${Event.EventId}", "0"));
                 repl.Add(new Tuple<string, string>("${Event.RecordId}", "0"));
+                repl.Add(new Tuple<string, string>("${Event.TimeCreated}", "0"));
+                repl.Add(new Tuple<string, string>("${Event.MachineName}", ""));
+                repl.Add(new Tuple<string, string>("${Event.ProviderName}", ""));
+                repl.Add(new Tuple<string, string>("${Event.ProcessId}", ""));
             }
-            repl.Add(new Tuple<string, string>("${Event.Timestamp}", evtlog.Timestamp.ToString()));
-            repl.Add(new Tuple<string, string>("${Event.Hostname}", (evtlog.Hostname != null ? evtlog.Hostname : "''")));
-            repl.Add(new Tuple<string, string>("${Event.InputName}", evtlog.Input.InputName));
-            repl.Add(new Tuple<string, string>("${Event.SelectorName}", evtlog.Input.SelectorName));
-            repl.Add(new Tuple<string, string>("${Event.Address}", evtlog.Address.ToString()));
-            repl.Add(new Tuple<string, string>("${Event.Port}", evtlog.Port.ToString()));
-            repl.Add(new Tuple<string, string>("${Event.Username}", (evtlog.Username != null ? evtlog.Username : "''")));
-            repl.Add(new Tuple<string, string>("${Event.Domain}", (evtlog.Domain != null ? evtlog.Domain : "''")));
-            repl.Add(new Tuple<string, string>("${Event.Status}", evtlog.Status.ToString()));
 
+            // Processor
             foreach (var item in evtlog.ProcData)
             {
                 if (item.Value == null) repl.Add(new Tuple<string, string>("${" + item.Key + "}", ""));

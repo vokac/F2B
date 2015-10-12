@@ -86,6 +86,7 @@
     <Compile Include="processors\Input.cs" />
     <Compile Include="processors\Label.cs" />
     <Compile Include="processors\Logger.cs" />
+    <Compile Include="processors\LoggerSQL.cs" />
     <Compile Include="processors\Login.cs" />
     <Compile Include="processors\Mail.cs" />
     <Compile Include="processors\Parallel.cs" />

@@ -35,13 +35,19 @@ namespace F2B.processors
             filename = null;
             size = -1;
             rotate = -1;
-            template = "$Event.Id$\t$Event.Timestamp$\t$Event.Hostname$\t$Event.InputName$\t$Event.SelectorName$\t$Event.Status$\t$Event.RecordId$\t$Event.Address$\t$Event.Port$\t$Event.Username$\t$Event.Domain$\n";
+            template = @"${Event.Id}	${Event.Timestamp}	${Event.Hostname}	${Event.InputName}	${Event.SelectorName}	${Event.Status}	${Event.RecordId}	${Event.Address}	${Event.Port}	${Event.Username}	${Event.Domain}
+";
             synchronized = true;
 
-            if (config.Options["file"] != null)
+            if (config.Options["file"] != null && !string.IsNullOrWhiteSpace(config.Options["file"].Value))
             {
                 filename = config.Options["file"].Value;
             }
+            else
+            {
+                throw new InvalidDataException("required configuration option file missing or empty");
+            }
+
             if (config.Options["size"] != null)
             {
                 size = long.Parse(config.Options["size"].Value);
