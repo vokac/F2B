@@ -39,6 +39,7 @@ namespace F2B
             Console.WriteLine("  -g, --log-file file   log file");
             Console.WriteLine("  -c, --config file     use this configuration (default: F2BLogAnalyzer.exe.config)");
             Console.WriteLine("  -u, --user user       use given user to run this service");
+            Console.WriteLine("  -x, --max-mem size    configure hard limit for memory in MB (Job Object)");
         }
 
         public static void Examples()
@@ -71,13 +72,15 @@ namespace F2B
         /// </summary>
         public static void Main(string[] args)
         {
-            string user = null;
             ConfigFile = AppDomain.CurrentDomain.SetupInformation.ConfigurationFile;
             Log.Dest = Log.Destinations.EventLog;
             Log.Level = EventLogEntryType.Information;
 
             int i = 0;
-            String command = null;
+            string command = null;
+            string user = null;
+            ulong maxmem = 0;
+
             while (i < args.Length)
             {
                 string param = args[i];
@@ -136,6 +139,14 @@ namespace F2B
                         user = args[i];
                     }
                 }
+                else if (param == "-x" || param == "-max-mem" || param == "--max-mem")
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        i++;
+                        maxmem = ulong.Parse(args[i]);
+                    }
+                }
                 else if (param.Length > 0 && param[0] == '-')
                 {
                     Log.Error("Unknown argument #" + i + " (" + args[i] + ")");
@@ -150,6 +161,14 @@ namespace F2B
                     command = args[i];
                 }
                 i++;
+            }
+
+            // Set memory limit for this process
+            if (maxmem > 0)
+            {
+                Limit limitMemory = new Limit(maxmem * 1024 * 1024, maxmem * 1024 * 1024);
+                limitMemory.AddProcess(Process.GetCurrentProcess().Handle);
+                limitMemory.Dispose();
             }
 
             // Initialize the service to start

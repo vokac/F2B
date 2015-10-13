@@ -10,6 +10,7 @@
   </PropertyGroup>
   <ItemGroup>
     <Compile Include="$(MSBuildThisFileDirectory)Fw.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Limit.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Log.cs" />
   </ItemGroup>
 </Project>

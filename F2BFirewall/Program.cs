@@ -52,6 +52,7 @@ namespace F2B
             Console.WriteLine("  -l          log severity level (INFO, WARN, ERROR)");
             Console.WriteLine("  -g file     log file");
             Console.WriteLine("  -u user     use given user to run this service");
+            Console.WriteLine("  -x size     configure hard limit for memory in MB (Job Object)");
             Console.WriteLine("  -H host     hostname with running F2BQueue (or F2BLogAnalyzer) service");
             Console.WriteLine("  -p queue    producer queue provided by F2BQueue (or F2BLogAnalyzer) service");
             Console.WriteLine("  -r queue    subscription queue for F2BQueue service");
@@ -117,6 +118,7 @@ namespace F2B
             int i = 0;
             string command = null;
             string user = null;
+            ulong maxmem = 0;
             string host = null;
             string producerQueue = null;
             string registrationQueue = null;
@@ -187,6 +189,14 @@ namespace F2B
                     {
                         i++;
                         user = args[i];
+                    }
+                }
+                else if (param == "-x" || param == "-max-mem" || param == "--max-mem")
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        i++;
+                        maxmem = ulong.Parse(args[i]);
                     }
                 }
                 else if (param == "-H" || param == "-host" || param == "--host")
@@ -291,6 +301,14 @@ namespace F2B
                     command = args[i];
                 }
                 i++;
+            }
+
+            // Set memory limit for this process
+            if (maxmem > 0)
+            {
+                Limit limitMemory = new Limit(maxmem * 1024 * 1024, maxmem * 1024 * 1024);
+                limitMemory.AddProcess(Process.GetCurrentProcess().Handle);
+                limitMemory.Dispose();
             }
 
             string[] serviceNamesToRun = new string[]
