@@ -19,6 +19,7 @@ namespace F2B.inputs
         private EventLogPropertySelector evtsel;
         private IList<Regex> evtregex;
         private EventLogWatcher watcher;
+        private object eventLock = new object();
         #endregion
 
         #region Constructors
@@ -231,17 +232,55 @@ namespace F2B.inputs
         {
             EventLogWatcher watcher = obj as EventLogWatcher;
             EventLogRecord evtlog = (EventLogRecord)arg.EventRecord;
+            EventLogException evtex = (EventLogException)arg.EventException;
+
+            if (evtlog == null)
+            {
+                if (evtex == null)
+                {
+                    Log.Error("No event log info!?");
+                }
+                else
+                {
+                    Log.Error("No event log info, received exception: " + arg.EventException.Message);
+                }
+
+                return;
+            }
+
+            long recordId = 0;
+            long timestamp = 0;
+            string hostname = null;
+            IList<object> evtdata = null;
+
+            try
+            {
+                // without this synchronization we sometimes get corrupted evtlog
+                // data with invalid handle (EventLogException)
+                lock (eventLock)
+                {
+                    timestamp = evtlog.TimeCreated.Value.Ticks;
+                    hostname = evtlog.MachineName;
+                    recordId = evtlog.RecordId.GetValueOrDefault(0);
+                    evtdata = evtlog.GetPropertyValues(evtsel);
+                }
+            }
+            catch (EventLogException ex)
+            {
+                Log.Error("Unable to access log info: " + ex.Message);
+                return;
+            }
+            catch (Exception ex)
+            {
+                Log.Error("Unable to access log info: " + ex.Message);
+                return;
+            }
 
             if (Log.Level == EventLogEntryType.Information)
             {
                 // debug info
-                Log.Info("EventLog[" + evtlog.RecordId + "@" + Name + "]: new log event received");
-            }
+                Log.Info("EventLog[" + recordId + "@" + Name + "]: new log event received");
 
-            IList<object> evtdata = evtlog.GetPropertyValues(evtsel);
-
-            if (Log.Level == EventLogEntryType.Information)
-            {
                 // more debug info
                 for (int i = 0; i < evtdata.Count; i++)
                 {
@@ -251,17 +290,17 @@ namespace F2B.inputs
                         {
                             foreach (string item in (object[])evtdata[i])
                             {
-                                Log.Info("EventLog[" + evtlog.RecordId + "@" + Name + "][" + i + "](" + evtdata[i].GetType() + "):" + item.ToString());
+                                Log.Info("EventLog[" + recordId + "@" + Name + "][" + i + "](" + evtdata[i].GetType() + "):" + item.ToString());
                             }
                         }
                         else
                         {
-                            Log.Info("EventLog[" + evtlog.RecordId + "@" + Name + "][" + i + "](" + evtdata[i].GetType() + "):" + evtdata[i].ToString());
+                            Log.Info("EventLog[" + recordId + "@" + Name + "][" + i + "](" + evtdata[i].GetType() + "):" + evtdata[i].ToString());
                         }
                     }
                     else
                     {
-                        Log.Info("EventLog[" + evtlog.RecordId + "@" + Name + "][" + i + "]: NULL!!!");
+                        Log.Info("EventLog[" + recordId + "@" + Name + "][" + i + "]: NULL!!!");
                     }
                 }
             }
@@ -273,7 +312,7 @@ namespace F2B.inputs
 
             if (strAddress == null)
             {
-                Log.Info("EventLog[" + evtlog.RecordId + "@" + Name + "] unable to get address");
+                Log.Info("EventLog[" + recordId + "@" + Name + "] unable to get address");
                 return;
             }
 
@@ -284,7 +323,7 @@ namespace F2B.inputs
             }
             catch (FormatException ex)
             {
-                Log.Info("EventLog[" + evtlog.RecordId + "@" + Name + "] invalid address"
+                Log.Info("EventLog[" + recordId + "@" + Name + "] invalid address"
                     + strAddress.Trim() + " (" + ex.Message + ")");
                 return;
             }
@@ -299,12 +338,10 @@ namespace F2B.inputs
                 // intentionally skip parser exeption for optional parameter
             }
 
-            long timestamp = evtlog.TimeCreated.Value.Ticks;
-            string hostname = evtlog.MachineName;
             EventEntry evt = new EventEntry(timestamp, hostname,
                 address, port, strUsername, strDomain, Status, this, arg);
 
-            Log.Info("EventLog[" + evtlog.RecordId + "->" + evt.Id + "@"
+            Log.Info("EventLog[" + recordId + "->" + evt.Id + "@"
                 + Name + "] queued message " + strUsername + "@" + address
                 + ":" + port + " from " + hostname + " status " + Status);
 

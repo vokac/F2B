@@ -66,6 +66,8 @@ namespace F2B.processors
             repl = new List<Tuple<string, string>>(20 + evtlog.ProcData.Count);
 
             // Environment
+            repl.Add(new Tuple<string, string>("${Environment.Now}", DateTime.Now.Ticks.ToString()));
+            repl.Add(new Tuple<string, string>("${Environment.DateTime}", DateTime.Now.ToString()));
             repl.Add(new Tuple<string, string>("${Environment.MachineName}", System.Environment.MachineName));
 
             // F2B Event

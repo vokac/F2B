@@ -137,6 +137,8 @@ namespace F2B.processors
             output.WriteLine("config cleanup: " + cleanup);
             output.WriteLine("config max_filter_rules: " + max_filter_rules);
             output.WriteLine("status cache size: " + recent.GetCount());
+            output.WriteLine("FwManager:");
+            F2B.FwManager.Instance.Debug(output);
         }
 #endif
         #endregion
