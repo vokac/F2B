@@ -107,11 +107,16 @@ namespace F2B.processors
                             string[] data = line.Split(separator);
                             Tuple<IPAddress, int> network = Utils.ParseNetwork(data[0].Trim());
                             IPAddress net = Utils.GetNetwork(network.Item1, network.Item2);
+                            Log.Error("XXX " + network + " YYY " + net + " ZZZ " + data[0]);
 
+                            prefixesNew.Add(network.Item2);
                             if (data.Length > 1)
                             {
                                 rangesEmailNew[net + "/" + network.Item2] = data[1];
-                                prefixesNew.Add(network.Item2);
+                            }
+                            else
+                            {
+                                rangesEmailNew[net + "/" + network.Item2] = null;
                             }
 
                             //if (rangesNew.ContainsKey(net) && rangesNew[net] <= network.Item2)
@@ -144,8 +149,9 @@ namespace F2B.processors
                         {
                             IPAddress net = Utils.GetNetwork(network.Item1, prefixSmaler);
 
-                            if (rangesNew.ContainsKey(net))
+                            if (rangesNew.ContainsKey(net) && prefixSmaler >= network.Item2)
                             {
+                                Log.Error("UUU[" + prefixSmaler + "] " + network.Item1 + "/" + network.Item2 + "->" + net + " ... " + rangeEmail.Key);
                                 exists = true;
                                 break;
                             }
@@ -237,9 +243,12 @@ namespace F2B.processors
                 if (rangesEmail.TryGetValue(network + "/" + prefix, out email))
                 {
                     evtlog.SetProcData("RangeFile.range", network + "/" + prefix);
-                    evtlog.SetProcData("RangeFile.email", email);
                     evtlog.SetProcData(Name + ".range", network + "/" + prefix);
-                    evtlog.SetProcData(Name + ".email", email);
+                    if (!string.IsNullOrEmpty(email))
+                    {
+                        evtlog.SetProcData("RangeFile.email", email);
+                        evtlog.SetProcData(Name + ".email", email);
+                    }
                     break;
                 }
             }
