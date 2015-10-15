@@ -107,7 +107,6 @@ namespace F2B.processors
                             string[] data = line.Split(separator);
                             Tuple<IPAddress, int> network = Utils.ParseNetwork(data[0].Trim());
                             IPAddress net = Utils.GetNetwork(network.Item1, network.Item2);
-                            Log.Error("XXX " + network + " YYY " + net + " ZZZ " + data[0]);
 
                             prefixesNew.Add(network.Item2);
                             if (data.Length > 1)
@@ -151,7 +150,6 @@ namespace F2B.processors
 
                             if (rangesNew.ContainsKey(net) && prefixSmaler >= network.Item2)
                             {
-                                Log.Error("UUU[" + prefixSmaler + "] " + network.Item1 + "/" + network.Item2 + "->" + net + " ... " + rangeEmail.Key);
                                 exists = true;
                                 break;
                             }
