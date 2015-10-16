@@ -249,7 +249,7 @@ namespace F2B.inputs
             }
 
             long recordId = 0;
-            long timestamp = 0;
+            DateTime created = DateTime.Now;
             string hostname = null;
             IList<object> evtdata = null;
 
@@ -259,9 +259,9 @@ namespace F2B.inputs
                 // data with invalid handle (EventLogException)
                 lock (eventLock)
                 {
-                    timestamp = evtlog.TimeCreated.Value.Ticks;
-                    hostname = evtlog.MachineName;
                     recordId = evtlog.RecordId.GetValueOrDefault(0);
+                    created = evtlog.TimeCreated.Value;
+                    hostname = evtlog.MachineName;
                     evtdata = evtlog.GetPropertyValues(evtsel);
                 }
             }
@@ -338,7 +338,7 @@ namespace F2B.inputs
                 // intentionally skip parser exeption for optional parameter
             }
 
-            EventEntry evt = new EventEntry(timestamp, hostname,
+            EventEntry evt = new EventEntry(created, hostname,
                 address, port, strUsername, strDomain, Status, this, arg);
 
             Log.Info("EventLog[" + recordId + "->" + evt.Id + "@"

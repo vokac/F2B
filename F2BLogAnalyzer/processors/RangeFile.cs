@@ -215,7 +215,7 @@ namespace F2B.processors
             {
                 IPAddress network = Utils.GetNetwork(evtlog.Address, range.Value);
 
-                Log.Info("Range::Execute: " + evtlog.Address + "/"
+                Log.Info("RangeFile::Execute: " + evtlog.Address + "/"
                     + range.Value + " -> " + network
                     + (range.Key.Equals(network) ? "" : " not")
                     + " in " + range.Key + "/" + range.Value);

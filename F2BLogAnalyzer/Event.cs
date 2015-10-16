@@ -22,7 +22,7 @@ namespace F2B
     public interface IEventEntry
     {
         long Id { get; }
-        long Timestamp { get; }
+        DateTime Created { get; }
         string Hostname { get; }
         IPAddress Address { get; }
         int Port { get; }
@@ -42,7 +42,7 @@ namespace F2B
     {
         #region Properties
         public long Id { get; private set; }
-        public long Timestamp { get; set; }
+        public DateTime Created { get; set; }
         public string Hostname { get; set; }
         public IPAddress Address { get; set; }
         public int Port { get; set; }
@@ -64,13 +64,13 @@ namespace F2B
         #endregion
 
         #region Constructors
-        public EventEntry(long timestamp, string hostname,
+        public EventEntry(DateTime created, string hostname,
             IPAddress address, int port, string username, string domain,
             LoginStatus status, BaseInput input, object ldata)
         {
             Id = Interlocked.Increment(ref _counter);
 
-            Timestamp = timestamp;
+            Created = created;
             Hostname = hostname;
             Address = address;
             Port = port;
@@ -88,7 +88,7 @@ namespace F2B
         {
             Id = evt.Id;
 
-            Timestamp = evt.Timestamp;
+            Created = evt.Created;
             Hostname = evt.Hostname;
             Address = evt.Address;
             Port = evt.Port;

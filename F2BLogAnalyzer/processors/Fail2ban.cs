@@ -633,7 +633,7 @@ namespace F2B.processors
 
             // fix log event that came from future(?!), _we_ have correct time!
             long now = DateTime.Now.Ticks;
-            long logtime = evtlog.Timestamp;
+            long logtime = evtlog.Created.Ticks;
 
             if (logtime > now)
             {

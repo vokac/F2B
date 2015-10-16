@@ -506,7 +506,7 @@ namespace F2B
                 string tmp = Convert.ToString(expiration);
                 try
                 {
-                    DateTime tmpExp = new DateTime(expiration);
+                    DateTime tmpExp = new DateTime(expiration, DateTimeKind.Utc);
                     tmp = tmpExp.ToLocalTime().ToString();
                 }
                 catch (Exception)
@@ -553,7 +553,7 @@ namespace F2B
                     string tmp = Convert.ToString(item.Value);
                     try
                     {
-                        DateTime tmpExp = new DateTime(item.Value);
+                        DateTime tmpExp = new DateTime(item.Value, DateTimeKind.Utc);
                         tmp = tmpExp.ToLocalTime().ToString();
                     }
                     catch (Exception)

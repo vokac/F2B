@@ -334,6 +334,9 @@ namespace F2B.inputs
             }
 
             string strTimestamp = GetGroupData(m, "timestamp");
+            string strTimestampUtc = GetGroupData(m, "timestamp_utc");
+            string strUnixTimestamp = GetGroupData(m, "unix_timestamp");
+            string strUnixTimestampUtc = GetGroupData(m, "unix_timestamp_utc");
             string strTime_b = GetGroupData(m, "time_b");
             string strTime_B = GetGroupData(m, "time_B");
             string strTime_e = GetGroupData(m, "time_e");
@@ -348,15 +351,39 @@ namespace F2B.inputs
             string strUsername = GetGroupData(m, "username");
             string strDomain = GetGroupData(m, "domain");
 
-           // simple/ugly time parsing
-            long timestamp;
-            if (strTimestamp != null)
+            // simple/ugly datetime parsing
+            DateTime created = DateTime.Now;
+            if (!string.IsNullOrEmpty(strTimestamp) || !string.IsNullOrEmpty(strTimestampUtc) || !string.IsNullOrEmpty(strUnixTimestamp) || !string.IsNullOrEmpty(strUnixTimestampUtc))
             {
-                try 
+                try
 	            {
-                    timestamp = long.Parse(strTimestamp);
-	            }
-	            catch (Exception ex)
+                    long timestamp = long.Parse(strTimestamp);
+                    if (!string.IsNullOrEmpty(strTimestamp))
+                    {
+                        DateTime dt = new DateTime(timestamp, DateTimeKind.Local);
+                        created = dt.ToLocalTime();
+                    }
+                    else if (!string.IsNullOrEmpty(strTimestampUtc))
+                    {
+                        DateTime dt = new DateTime(timestamp, DateTimeKind.Utc);
+                        created = dt.ToLocalTime();
+                    }
+                    else if (!string.IsNullOrEmpty(strUnixTimestamp))
+                    {
+                        DateTime dt = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Local);
+                        created = dt.AddSeconds(timestamp).ToLocalTime();
+                    }
+                    else if (!string.IsNullOrEmpty(strUnixTimestampUtc))
+                    {
+                        DateTime dt = new DateTime(1970, 1, 1, 0, 0, 0, 0, System.DateTimeKind.Utc);
+                        created = dt.AddSeconds(timestamp).ToLocalTime();
+                    }
+                    else
+                    {
+                        throw new Exception("it is a bug in sources if you see this exception");
+                    }
+                }
+                catch (Exception ex)
 	            {
 		            Log.Info("Unable to parse timestamp (" + ex.ToString() + "): " + line);
 		            return;
@@ -419,8 +446,7 @@ namespace F2B.inputs
 		            if (strTime_M != null) minute = int.Parse(strTime_M);
 		            if (strTime_S != null) second = int.Parse(strTime_S);
 
-                    DateTime d = new DateTime(year, month, day, hour, minute, second);
-                    timestamp = d.Ticks;
+                    created = new DateTime(year, month, day, hour, minute, second);
                 }
 	            catch (Exception ex)
 	            {
@@ -457,7 +483,7 @@ namespace F2B.inputs
                 // intentionally skip parser exeption for optional parameter
             }
 
-            EventEntry evt = new EventEntry(timestamp, strHostname,
+            EventEntry evt = new EventEntry(created, strHostname,
                 address, port, strUsername, strDomain, Status, this, line);
 
             Log.Info("FileLog[" + evt.Id + "@" + Name + "] queued message "

@@ -72,7 +72,7 @@ namespace F2B.processors
 
             // F2B Event
             repl.Add(new Tuple<string, string>("${Event.Id}", evtlog.Id.ToString()));
-            repl.Add(new Tuple<string, string>("${Event.Timestamp}", evtlog.Timestamp.ToString()));
+            repl.Add(new Tuple<string, string>("${Event.Timestamp}", evtlog.Created.Ticks.ToString()));
             repl.Add(new Tuple<string, string>("${Event.Hostname}", (evtlog.Hostname != null ? evtlog.Hostname : "")));
             repl.Add(new Tuple<string, string>("${Event.Type}", evtlog.Input.InputType));
             repl.Add(new Tuple<string, string>("${Event.Input}", evtlog.Input.InputName));
@@ -90,8 +90,8 @@ namespace F2B.processors
                 EventRecord evtrec = evtarg.EventRecord;
                 repl.Add(new Tuple<string, string>("${Event.EventId}", evtrec.Id.ToString()));
                 repl.Add(new Tuple<string, string>("${Event.RecordId}", evtrec.RecordId.ToString()));
-                repl.Add(new Tuple<string, string>("${Event.TimeCreated}", evtrec.MachineName));
-                repl.Add(new Tuple<string, string>("${Event.MachineName}", evtrec.TimeCreated.Value.Ticks.ToString()));
+                repl.Add(new Tuple<string, string>("${Event.MachineName}", evtrec.MachineName));
+                repl.Add(new Tuple<string, string>("${Event.TimeCreated}", evtrec.TimeCreated.Value.ToString()));
                 repl.Add(new Tuple<string, string>("${Event.ProviderName}", evtrec.ProviderName));
                 repl.Add(new Tuple<string, string>("${Event.ProcessId}", evtrec.ProcessId.ToString()));
             }
@@ -99,8 +99,8 @@ namespace F2B.processors
             {
                 repl.Add(new Tuple<string, string>("${Event.EventId}", "0"));
                 repl.Add(new Tuple<string, string>("${Event.RecordId}", "0"));
-                repl.Add(new Tuple<string, string>("${Event.TimeCreated}", "0"));
                 repl.Add(new Tuple<string, string>("${Event.MachineName}", ""));
+                repl.Add(new Tuple<string, string>("${Event.TimeCreated}", "0"));
                 repl.Add(new Tuple<string, string>("${Event.ProviderName}", ""));
                 repl.Add(new Tuple<string, string>("${Event.ProcessId}", ""));
             }

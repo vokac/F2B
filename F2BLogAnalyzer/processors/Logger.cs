@@ -35,7 +35,7 @@ namespace F2B.processors
             filename = null;
             size = -1;
             rotate = -1;
-            template = @"${Event.Id}	${Event.Timestamp}	${Event.Hostname}	${Event.InputName}	${Event.SelectorName}	${Event.Status}	${Event.RecordId}	${Event.Address}	${Event.Port}	${Event.Username}	${Event.Domain}
+            template = @"${Event.Timestamp}	${Event.TimeCreated}	${Event.Hostname}	${Event.Id}	${Event.Input}	${Event.Selector}	${Event.Status}	${Event.MachineName}	${Event.EventId}	${Event.RecordId}	${Event.Address}	${Event.Port}	${Event.Username}	${Event.Domain}
 ";
             synchronized = true;
 

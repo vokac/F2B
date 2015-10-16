@@ -582,7 +582,7 @@ namespace F2B
                                 string tmp = Convert.ToString(fwname.Item1);
                                 try
                                 {
-                                    DateTime tmpExp = new DateTime(fwname.Item1);
+                                    DateTime tmpExp = new DateTime(fwname.Item1, DateTimeKind.Utc);
                                     tmp = tmpExp.ToLocalTime().ToString();
                                 }
                                 catch (Exception)
