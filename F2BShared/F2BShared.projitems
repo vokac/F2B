@@ -9,6 +9,7 @@
     <Import_RootNamespace>F2BShared</Import_RootNamespace>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Include="$(MSBuildThisFileDirectory)Fixes.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Fw.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Limit.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Log.cs" />

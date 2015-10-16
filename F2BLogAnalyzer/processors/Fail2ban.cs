@@ -699,7 +699,8 @@ namespace F2B.processors
                 evtlog.SetProcData("Fail2ban.module", Name);
                 if (addr.IsIPv4MappedToIPv6)
                 {
-                    evtlog.SetProcData("Fail2ban.address", addr.MapToIPv4());
+                    // workaround for buggy MapToIPv4 implementation
+                    evtlog.SetProcData("Fail2ban.address", Fixes.MapToIPv4(addr));
                 }
                 else
                 {

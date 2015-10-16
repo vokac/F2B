@@ -296,7 +296,8 @@ namespace F2B
 
             if (addr.IsIPv4MappedToIPv6)
             {
-                addr = addr.MapToIPv4();
+                // workaround for buggy MapToIPv4 implementation
+                addr = Fixes.MapToIPv4(addr);
             }
 
             if (addr.AddressFamily == AddressFamily.InterNetwork)
@@ -316,7 +317,8 @@ namespace F2B
 
             if (addr.IsIPv4MappedToIPv6)
             {
-                addr = addr.MapToIPv4();
+                // workaround for buggy MapToIPv4 implementation
+                addr = Fixes.MapToIPv4(addr);
                 if (prefix >= 96)
                 {
                     prefix -= 96;
@@ -341,11 +343,13 @@ namespace F2B
 
             if (addrLow.IsIPv4MappedToIPv6)
             {
-                addrLow = addrLow.MapToIPv4();
+                // workaround for buggy MapToIPv4 implementation
+                addrLow = Fixes.MapToIPv4(addrLow);
             }
             if (addrHigh.IsIPv4MappedToIPv6)
             {
-                addrHigh = addrHigh.MapToIPv4();
+                // workaround for buggy MapToIPv4 implementation
+                addrHigh = Fixes.MapToIPv4(addrHigh);
             }
 
             if (addrLow.AddressFamily != addrHigh.AddressFamily)
