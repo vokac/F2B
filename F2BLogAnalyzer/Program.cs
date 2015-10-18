@@ -40,6 +40,7 @@ namespace F2B
             Console.WriteLine("  -c, --config file     use this configuration (default: F2BLogAnalyzer.exe.config)");
             Console.WriteLine("  -u, --user user       use given user to run this service");
             Console.WriteLine("  -x, --max-mem size    configure hard limit for memory in MB (Job Object)");
+            Console.WriteLine("  --dump-file file      file used to store service internal state (default: c:\\F2B\\dump.txt)");
         }
 
         public static void Examples()
@@ -80,6 +81,9 @@ namespace F2B
             string command = null;
             string user = null;
             ulong maxmem = 0;
+#if DEBUG
+            string dumpFile = @"c:\F2B\dump.txt";
+#endif
 
             while (i < args.Length)
             {
@@ -145,6 +149,14 @@ namespace F2B
                     {
                         i++;
                         maxmem = ulong.Parse(args[i]);
+                    }
+                }
+                else if (param == "-dump-file" || param == "--dump-file")
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        i++;
+                        dumpFile = args[i];
                     }
                 }
                 else if (param.Length > 0 && param[0] == '-')
@@ -237,7 +249,7 @@ namespace F2B
                         else if (key.KeyChar == 'd')
                         {
                             Log.Info("Debug key pressed");
-                            ((Service)servicesToRun[0]).Dump();
+                            ((Service)servicesToRun[0]).Dump(dumpFile);
                         }
 #endif
                         else

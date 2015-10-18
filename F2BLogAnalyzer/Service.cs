@@ -299,9 +299,9 @@ namespace F2B
         }
 
 #if DEBUG
-        public void Dump()
+        public void Dump(string filename)
         {
-            equeue.Produce(null);
+            equeue.Produce(null, filename);
         }
 #endif
     }

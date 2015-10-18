@@ -256,12 +256,28 @@ namespace F2B
                     continue;
                 }
 
-                // Service.Consume(EventEntry, procName, thread);
-                if (evtlog == null)
-                {
 #if DEBUG
+                bool debug = evtlog == null;
+                string debugFile = procName;
+
+                if (!debug)
+                {
+                    // special event from 0.0.0.0 or :: with port 12345 is treated
+                    // as requiest to dump F2B internal state that can be used for debug
+                    if (evtlog.Port == 12345 && (evtlog.Address.Equals(IPAddress.Any.MapToIPv6()) || evtlog.Address.Equals(IPAddress.IPv6Any)))
+                    {
+                        debug = true;
+                        debugFile = @"c:\F2B\dump.txt";
+                        if (!string.IsNullOrEmpty(evtlog.Username))
+                        {
+                            debugFile = evtlog.Username;
+                        }
+                    }
+                }
+
+                if (debug)
+                {
                     Log.Info(logpfx + "Dump processors debug info");
-                    string debugFile = @"c:\f2b\dump.txt";
                     StreamWriter output = null;
                     lock (thisInst)
                     {
@@ -288,13 +304,19 @@ namespace F2B
                             }
                         }
                     }
+
+                    continue;
+                }
 #endif
 
+                if (evtlog == null)
+                {
+                    // special event used for debugging
                     continue;
                 }
 
                 logpfx = string.Format("Consuming({0}/{1}) event[{2}@{3}]: ",
-                    tnumber, tnevts, evtlog.Id, evtlog.Input.Name);
+                tnumber, tnevts, evtlog.Id, evtlog.Input.Name);
                 Log.Info(logpfx + evtlog.Address + ", " + evtlog.Username);
 
                 BaseProcessor proc = null;
