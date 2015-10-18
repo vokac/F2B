@@ -9,15 +9,11 @@ using System.Runtime.Caching;
 
 namespace F2B.processors
 {
-    public class Fail2banMSMQProcessor : BaseProcessor, IThreadSafeProcessor
+    public class Fail2banMSMQProcessor : Fail2banActionProcessor, IThreadSafeProcessor
     {
         #region Fields
         private string queue_name;
-        private int max_ignore;
-        private int bantime;
         private int time_to_be_received;
-
-        private MemoryCache recent;
         #endregion
 
         #region Constructors
@@ -29,68 +25,17 @@ namespace F2B.processors
                 queue_name = config.Options["queue_name"].Value;
             }
 
-            max_ignore = 60;
-            if (config.Options["max_ignore"] != null)
-            {
-                max_ignore = int.Parse(config.Options["max_ignore"].Value);
-            }
-
-            bantime = 60;
-            if (config.Options["bantime"] != null)
-            {
-                bantime = int.Parse(config.Options["bantime"].Value);
-            }
-
             time_to_be_received = 300;
             if (config.Options["time_to_be_received"] != null)
             {
-                bantime = int.Parse(config.Options["time_to_be_received"].Value);
+                time_to_be_received = int.Parse(config.Options["time_to_be_received"].Value);
             }
-
-            //recent = new MemoryCache("F2B." + Name + ".recent");
-            recent = new MemoryCache(GetType() + ".recent");
         }
         #endregion
 
         #region Override
-        public override string Execute(EventEntry evtlog)
+        protected override void ExecuteFail2banAction(EventEntry evtlog, IPAddress addr, int prefix, long expiration)
         {
-            if (!evtlog.HasProcData("Fail2ban.address"))
-            {
-                throw new ArgumentException("Missing Fail2ban.address, invalid/misspelled configuration?!");
-            }
-            if (!evtlog.HasProcData("Fail2ban.prefix"))
-            {
-                throw new ArgumentException("Missing Fail2ban.prefix, invalid/misspelled configuration?!");
-            }
-
-            IPAddress addr = evtlog.GetProcData<IPAddress>("Fail2ban.address");
-            int prefix = evtlog.GetProcData<int>("Fail2ban.prefix");
-            int btime = evtlog.GetProcData("Fail2ban.bantime", bantime);
-
-            // check in memory cache with recently send F2B messages
-            string recentKey = null;
-            long now = DateTimeOffset.Now.Ticks;
-            if (max_ignore > 0)
-            {
-                recentKey = Name + "[" + addr + "/" + prefix + "]";
-                object cacheEntry = recent[recentKey];
-
-                if (cacheEntry != null)
-                {
-                    Tuple<long, int> item = (Tuple<long, int>)cacheEntry;
-                    long ticksDiff = Math.Abs(item.Item1 - now);
-
-                    if (ticksDiff < TimeSpan.FromSeconds(btime).Ticks / 100)
-                    {
-                        Log.Info("Skipping F2B firewall for recent address ("
-                            + TimeSpan.FromTicks(ticksDiff).TotalSeconds + "s ago)");
-
-                        return goto_next;
-                    }
-                }
-            }
-
             if (!MessageQueue.Exists(queue_name))
             {
                 MessageQueue newMsMq = MessageQueue.Create(queue_name);
@@ -126,8 +71,6 @@ namespace F2B.processors
             msg.BodyStream.WriteByte((byte)'2');
             msg.BodyStream.WriteByte((byte)'B');
             msg.BodyStream.WriteByte((byte)F2B_DATA_TYPE_ENUM.F2B_FWDATA_TYPE0);
-
-            long expiration = DateTime.UtcNow.Ticks + btime * TimeSpan.TicksPerSecond;
 
             //BinaryWriter stream = new BinaryWriter(msg.BodyStream);
             //MemoryStream memStream = new MemoryStream();
@@ -181,30 +124,14 @@ namespace F2B.processors
                 // close the mesage queue
                 msMq.Close();
             }
-
-            // add this message to in memory cache of recently send F2B messages
-            if (max_ignore > 0)
-            {
-                long bantimeTicks = TimeSpan.FromSeconds(btime).Ticks / 100;
-                long expirationTicks = Math.Min(bantimeTicks, TimeSpan.FromSeconds(max_ignore).Ticks);
-                TimeSpan expirationOffset = TimeSpan.FromTicks(expirationTicks);
-                DateTimeOffset absoluteExpiration = DateTimeOffset.Now + expirationOffset;
-                recent.Add(recentKey, new Tuple<long, int>(now, btime), absoluteExpiration);
-            }
-
-            return goto_next;
         }
 
 #if DEBUG
         public override void Debug(StreamWriter output)
         {
-            base.Debug(output);
-
             output.WriteLine("config msmq: " + queue_name);
-            output.WriteLine("config max_ignore: " + max_ignore);
-            output.WriteLine("config bantime: " + bantime);
             output.WriteLine("config time_to_be_received: " + time_to_be_received);
-            output.WriteLine("status cache size: " + recent.GetCount());
+            base.Debug(output);
         }
 #endif
         #endregion

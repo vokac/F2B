@@ -8,15 +8,11 @@ using System.Runtime.Caching;
 
 namespace F2B.processors
 {
-    public class Fail2banCmdProcessor : BaseProcessor, IThreadSafeProcessor
+    public class Fail2banCmdProcessor : Fail2banActionProcessor, IThreadSafeProcessor
     {
         #region Fields
         private string path;
         private string args;
-        private int max_ignore;
-        private int bantime;
-
-        private MemoryCache recent;
         #endregion
 
         #region Constructors
@@ -34,73 +30,12 @@ namespace F2B.processors
             {
                 args = Environment.ExpandEnvironmentVariables(config.Options["args"].Value);
             }
-
-            max_ignore = 60;
-            if (config.Options["max_ignore"] != null)
-            {
-                max_ignore = int.Parse(config.Options["max_ignore"].Value);
-            }
-
-            bantime = 60;
-            if (config.Options["bantime"] != null)
-            {
-                bantime = int.Parse(config.Options["bantime"].Value);
-            }
-
-            //recent = new MemoryCache("F2B." + Name + ".recent");
-            recent = new MemoryCache(GetType() + ".recent");
         }
         #endregion
 
         #region Override
-        public override string Execute(EventEntry evtlog)
+        protected override void ExecuteFail2banAction(EventEntry evtlog, IPAddress addr, int prefix, long expiration)
         {
-            if (!evtlog.HasProcData("Fail2ban.address"))
-            {
-                throw new ArgumentException("Missing Fail2ban.address, invalid/misspelled configuration?!");
-            }
-            if (!evtlog.HasProcData("Fail2ban.prefix"))
-            {
-                throw new ArgumentException("Missing Fail2ban.prefix, invalid/misspelled configuration?!");
-            }
-            if (!evtlog.HasProcData("Fail2ban.bantime"))
-            {
-                throw new ArgumentException("Missing Fail2ban.bantime, invalid/misspelled configuration?!");
-            }
-            if (!evtlog.HasProcData("Fail2ban.expiration"))
-            {
-                throw new ArgumentException("Missing Fail2ban.expiration, invalid/misspelled configuration?!");
-            }
-
-            // NOTE: we should consider to drop bantime from cache information
-            //       and use just expiration
-            IPAddress addr = evtlog.GetProcData<IPAddress>("Fail2ban.address");
-            int prefix = evtlog.GetProcData<int>("Fail2ban.prefix");
-            int btime = evtlog.GetProcData("Fail2ban.bantime", bantime);
-
-            // check in memory cache with recently send F2B messages
-            string recentKey = null;
-            long now = DateTimeOffset.Now.Ticks;
-            if (max_ignore > 0)
-            {
-                recentKey = Name + "[" + addr + "/" + prefix + "]";
-                object cacheEntry = recent[recentKey];
-
-                if (cacheEntry != null)
-                {
-                    Tuple<long, int> item = (Tuple<long, int>)cacheEntry;
-                    long ticksDiff = Math.Abs(item.Item1 - now);
-
-                    if (ticksDiff < TimeSpan.FromSeconds(btime).Ticks / 100)
-                    {
-                        Log.Info("Skipping F2B firewall for recent address ("
-                            + TimeSpan.FromTicks(ticksDiff).TotalSeconds + "s ago)");
-
-                        return goto_next;
-                    }
-                }
-            }
-
             ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
 
             // run process without creating window
@@ -115,30 +50,14 @@ namespace F2B.processors
             process.StartInfo = startInfo;
             Log.Info("Fail2banCmdProcessor: executing command: " + startInfo.FileName + " " + startInfo.Arguments);
             process.Start();
-
-            // add this message to in memory cache of recently send F2B messages
-            if (max_ignore > 0)
-            {
-                long bantimeTicks = TimeSpan.FromSeconds(btime).Ticks / 100;
-                long expirationTicks = Math.Min(bantimeTicks, TimeSpan.FromSeconds(max_ignore).Ticks);
-                TimeSpan expirationOffset = TimeSpan.FromTicks(expirationTicks);
-                DateTimeOffset absoluteExpiration = DateTimeOffset.Now + expirationOffset;
-                recent.Add(recentKey, new Tuple<long, int>(now, btime), absoluteExpiration);
-            }
-
-            return goto_next;
         }
 
 #if DEBUG
         public override void Debug(StreamWriter output)
         {
-            base.Debug(output);
-
             output.WriteLine("config path: " + path);
             output.WriteLine("config args: " + args);
-            output.WriteLine("config max_ignore: " + max_ignore);
-            output.WriteLine("config bantime: " + bantime);
-            output.WriteLine("status cache size: " + recent.GetCount());
+            base.Debug(output);
         }
 #endif
         #endregion

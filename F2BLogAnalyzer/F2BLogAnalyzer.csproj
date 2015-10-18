@@ -80,6 +80,7 @@
     <Compile Include="processors\Bool.cs" />
     <Compile Include="processors\Case.cs" />
     <Compile Include="processors\Fail2ban.cs" />
+    <Compile Include="processors\Fail2banAction.cs" />
     <Compile Include="processors\Fail2banWFP.cs" />
     <Compile Include="processors\Fail2banCmd.cs" />
     <Compile Include="processors\Fail2banMSMQ.cs" />
