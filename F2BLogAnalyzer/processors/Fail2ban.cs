@@ -9,7 +9,7 @@ using System.Timers;
 
 namespace F2B.processors
 {
-    public class Fail2banProcessor : BaseProcessor
+    public class Fail2banProcessor : BaseProcessor, IThreadSafeProcessor
     {
         #region Fields
         private long findtime;
