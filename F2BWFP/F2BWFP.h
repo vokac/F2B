@@ -14,6 +14,8 @@ using namespace System::Net::Sockets;
 using namespace System::Threading;
 using namespace System::Collections;
 using namespace System::Collections::Generic;
+using namespace System::Runtime::InteropServices;
+using namespace System::Text;
 using namespace System::Security::Principal;
 
 namespace F2B {
@@ -252,7 +254,8 @@ namespace F2B {
 		void Cleanup();
 
 		// List all filter rules added by this module
-		Dictionary<UInt64, String^>^ List();
+		Dictionary<UInt64, String^>^ List() { return List(false); };
+		Dictionary<UInt64, String^>^ List(bool details);
 
 	private:
 		//void SetCondition(FWPM_FILTER_CONDITION &fwpFilterCondition, IPAddress^ addr);

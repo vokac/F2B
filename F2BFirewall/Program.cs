@@ -574,6 +574,7 @@ namespace F2B
                 {
                     try
                     {
+                        var details = F2B.Firewall.Instance.List(true);
                         foreach (var item in F2B.Firewall.Instance.List())
                         {
                             try
@@ -588,9 +589,10 @@ namespace F2B
                                 catch (Exception)
                                 {
                                 }
-                                Console.WriteLine("{0}: {1} (expiration={2}, md5={3})",
+                                Console.WriteLine("{0}: {1} (expiration={2}, md5={3}) ... {4}",
                                     item.Key, item.Value, tmp,
-                                    BitConverter.ToString(fwname.Item2).Replace("-", ":"));
+                                    BitConverter.ToString(fwname.Item2).Replace("-", ":"),
+                                    details.ContainsKey(item.Key) ? details[item.Key] : "");
                             }
                             catch (ArgumentException)
                             {

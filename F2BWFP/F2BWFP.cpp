@@ -1294,6 +1294,7 @@ UInt64 Firewall::Add(String^ name, IPAddress^ addrLow, IPAddress^ addrHigh, UInt
 
 	fwpFilterCondition.fieldKey = FWPM_CONDITION_IP_REMOTE_ADDRESS;
 	fwpFilterCondition.matchType = FWP_MATCH_RANGE;
+	fwpFilterCondition.conditionValue.type = FWP_RANGE_TYPE;
 	if (addrLow->AddressFamily == Sockets::AddressFamily::InterNetwork)
 	{
 		// IPv4 address
@@ -1510,7 +1511,7 @@ void Firewall::Cleanup()
 
 
 // List all filter rules added by this module
-Dictionary<UInt64, String^>^ Firewall::List()
+Dictionary<UInt64, String^>^ Firewall::List(bool details)
 {
 	OutputDebugString(L"Firewall::List");
 
@@ -1521,16 +1522,14 @@ Dictionary<UInt64, String^>^ Firewall::List()
 	UINT32 nFilter;
 
 	// return only subset of filter rules
-	//FWPM_FILTER_ENUM_TEMPLATE enumTemplate;
-	//ZeroMemory(&enumTemplate, sizeof(FWPM_FILTER_ENUM_TEMPLATE));
-	//enumTemplate.layerKey = FWPM_LAYER_INBOUND_IPPACKET_V4;
-	//enumTemplate.providerKey = (GUID *)&F2BFW_PROVIDER_KEY;
-	//enumTemplate.numFilterConditions = 0;
-	//enumTemplate.actionMask = 0xFFFFFFFF;
-	//rc = FwpmFilterCreateEnumHandle(*p_hEngineHandle, &enumTemplate, &m_hFilterEnumHandle);
+	FWPM_FILTER_ENUM_TEMPLATE enumTemplate;
+	ZeroMemory(&enumTemplate, sizeof(FWPM_FILTER_ENUM_TEMPLATE));
+	enumTemplate.layerKey = FWPM_LAYER_INBOUND_IPPACKET_V4;
+	enumTemplate.providerKey = (GUID *)&F2BFW_PROVIDER_KEY;
+	enumTemplate.actionMask = 0xFFFFFFFF;
 
 	// filter
-	rc = FwpmFilterCreateEnumHandle(*p_hEngineHandle, NULL, &m_hFilterEnumHandle);
+	rc = FwpmFilterCreateEnumHandle(*p_hEngineHandle, &enumTemplate, &m_hFilterEnumHandle);
 	if (rc != ERROR_SUCCESS) {
 		throw gcnew FirewallException(rc, "Firewall::List: FwpmFilterCreateEnumHandle failed (" + GetErrorText(rc) + ")");
 	}
@@ -1542,28 +1541,242 @@ Dictionary<UInt64, String^>^ Firewall::List()
 	}
 
 	Dictionary<UInt64, String^>^ ret = gcnew Dictionary<UInt64, String^>();
-	//wprintf(L"rules: %i\n", nFilter);
 	for (UINT32 i = 0; i < nFilter; i++)
 	{
 		FWPM_FILTER *f = pFilter[i];
-		if (f->providerKey == NULL)
-			continue;
-		if (!IsEqualGUID(*f->providerKey, F2BFW_PROVIDER_KEY))
-			continue;
+		//if (f->providerKey == NULL)
+		//	continue;
+		//if (!IsEqualGUID(*f->providerKey, F2BFW_PROVIDER_KEY))
+		//	continue;
 		if (!IsEqualGUID(f->subLayerKey, F2BFW_SUBLAYER_KEY))
 			continue;
 
-		//wprintf(L"%llu{%08lX-%04hX-%04hX-%02hhX%02hhX-%02hhX%02hhX%02hhX%02hhX%02hhX%02hhX}: %s (%s)\n",
-		//	f->filterId,
-		//	f->filterKey.Data1, f->filterKey.Data2, f->filterKey.Data3,
-		//	f->filterKey.Data4[0], f->filterKey.Data4[1], f->filterKey.Data4[2], f->filterKey.Data4[3],
-		//	f->filterKey.Data4[4], f->filterKey.Data4[5], f->filterKey.Data4[6], f->filterKey.Data4[7],
-		//	f->displayData.name, f->displayData.description == NULL ? L"NULL" : f->displayData.description);
-		//FWPM_DISPLAY_DATA *d = &f->displayData;
-		//out << L"    f" << i << L": " << d->name;
-		////if (d->description) out << L" (" << d->description << L")";
-		//out << L": flags=" << f->flags << L", weight=" << f->weight.int32 << std::endl;
-		ret[f->filterId] = gcnew String(f->displayData.name);
+		if (!details)
+		{
+			ret[f->filterId] = gcnew String(f->displayData.name);
+			continue;
+		}
+
+		StringBuilder^ detail = gcnew StringBuilder();
+		detail->Append("name[");
+		detail->Append(gcnew String(f->displayData.name));
+		detail->Append("]");
+		detail->Append("/");
+		// description
+		if (f->displayData.description)
+		{
+			detail->Append("desc[");
+			detail->Append(gcnew String(f->displayData.description));
+			detail->Append("]");
+			detail->Append("/");
+		}
+		// GUID
+		detail->Append("GUID[");
+		detail->Append(String::Format("{0:X08}-{1:X04}-{2:X04}-{3:X02}{4:X02}-{5:X02}{6:X02}{7:X02}{8:X02}{9:X02}{10:X02}",
+			f->filterKey.Data1, f->filterKey.Data2, f->filterKey.Data3,
+			f->filterKey.Data4[0], f->filterKey.Data4[1], f->filterKey.Data4[2], f->filterKey.Data4[3],
+			f->filterKey.Data4[4], f->filterKey.Data4[5], f->filterKey.Data4[6], f->filterKey.Data4[7]));
+		detail->Append("]");
+		detail->Append("/");
+		// action
+		detail->Append("action[");
+		switch (f->action.type)
+		{
+		case FWP_ACTION_BLOCK:
+			detail->Append("block");
+			break;
+		case FWP_ACTION_PERMIT:
+			detail->Append("permit");
+			break;
+		default:
+			detail->Append("unknown");
+			break;
+		}
+		detail->Append("]");
+		detail->Append("/");
+		// flags
+		detail->Append("flags[");
+		detail->Append(f->flags);
+		detail->Append("]");
+		detail->Append("/");
+		// weight
+		detail->Append("weight[");
+		switch (f->weight.type)
+		{
+		case FWP_UINT8:
+			detail->Append("range_index_");
+			detail->Append(f->weight.uint8);
+			break;
+		case FWP_UINT64:
+			detail->Append(*f->weight.uint64);
+			break;
+		case FWP_EMPTY:
+			detail->Append("empty");
+			break;
+		default:
+			detail->Append("unknown");
+			break;
+		}
+		detail->Append("]");
+		detail->Append("/");
+        // effectiveWeight
+		detail->Append("effectiveWeight[");
+		switch (f->effectiveWeight.type)
+		{
+		case FWP_UINT8:
+			detail->Append("range_index_");
+			detail->Append(f->effectiveWeight.uint8);
+			break;
+		case FWP_UINT64:
+			detail->Append(*f->effectiveWeight.uint64);
+			break;
+		case FWP_EMPTY:
+			detail->Append("empty");
+			break;
+		default:
+			detail->Append("unknown");
+			break;
+		}
+		detail->Append("]");
+		detail->Append("/");
+		// conditions
+		detail->Append("conditions[");
+		for (UINT32 j = 0; j < f->numFilterConditions; j++)
+		{
+			FWPM_FILTER_CONDITION *c = &f->filterCondition[j];
+			if (j != 0)
+				detail->Append(",");
+			detail->Append("(");
+			detail->Append("fieldKey[");
+			detail->Append(String::Format("{0:X08}-{1:X04}-{2:X04}-{3:X02}{4:X02}-{5:X02}{6:X02}{7:X02}{8:X02}{9:X02}{10:X02}",
+				c->fieldKey.Data1, c->fieldKey.Data2, c->fieldKey.Data3,
+				c->fieldKey.Data4[0], c->fieldKey.Data4[1], c->fieldKey.Data4[2], c->fieldKey.Data4[3],
+				c->fieldKey.Data4[4], c->fieldKey.Data4[5], c->fieldKey.Data4[6], c->fieldKey.Data4[7]));
+			detail->Append("],match[");
+			switch (c->matchType)
+			{
+			case FWP_MATCH_EQUAL: detail->Append("equal"); break;
+			case FWP_MATCH_GREATER: detail->Append("greater"); break;
+			case FWP_MATCH_LESS: detail->Append("less"); break;
+			case FWP_MATCH_GREATER_OR_EQUAL: detail->Append("greater_or_equal"); break;
+			case FWP_MATCH_LESS_OR_EQUAL: detail->Append("less_or_equal"); break;
+			case FWP_MATCH_RANGE: detail->Append("range"); break;
+			case FWP_MATCH_FLAGS_ALL_SET: detail->Append("flags_all_set"); break;
+			case FWP_MATCH_FLAGS_ANY_SET: detail->Append("flags_any_set"); break;
+			case FWP_MATCH_FLAGS_NONE_SET: detail->Append("flags_none_set"); break;
+			case FWP_MATCH_EQUAL_CASE_INSENSITIVE: detail->Append("equal_case_insensitive"); break;
+			case FWP_MATCH_NOT_EQUAL: detail->Append("not_equal"); break;
+			default: detail->Append("unknown"); break;
+			}
+			detail->Append("], value[");
+			switch (c->conditionValue.type)
+			{
+			case FWP_EMPTY: detail->Append("empty"); break;
+			case FWP_UINT8: detail->Append("uint8="); detail->Append(c->conditionValue.uint8); break;
+			case FWP_UINT16: detail->Append("uint16="); detail->Append(c->conditionValue.uint16); break;
+			case FWP_UINT32: detail->Append("uint32="); detail->Append(c->conditionValue.uint32); break;
+			case FWP_UINT64: detail->Append("uint64="); detail->Append(*c->conditionValue.uint64); break;
+			case FWP_INT8: detail->Append("int8="); detail->Append(c->conditionValue.int8); break;
+			case FWP_INT16: detail->Append("int16="); detail->Append(c->conditionValue.int16); break;
+			case FWP_INT32: detail->Append("int32="); detail->Append(c->conditionValue.int32); break;
+			case FWP_INT64: detail->Append("int64="); detail->Append(*c->conditionValue.int64); break;
+			case FWP_FLOAT: detail->Append("float="); detail->Append(c->conditionValue.float32); break;
+			case FWP_DOUBLE: detail->Append("double="); detail->Append(*c->conditionValue.double64); break;
+			case FWP_BYTE_ARRAY16_TYPE: detail->Append("byte16"); break;
+			case FWP_BYTE_BLOB_TYPE: detail->Append("blob"); break;
+			case FWP_SID: detail->Append("sid"); break;
+			case FWP_SECURITY_DESCRIPTOR_TYPE: detail->Append("sd"); break;
+			case FWP_TOKEN_INFORMATION_TYPE: detail->Append("token_info"); break;
+			case FWP_TOKEN_ACCESS_INFORMATION_TYPE: detail->Append("token_access"); break;
+			case FWP_UNICODE_STRING_TYPE: detail->Append("string"); break;
+			case FWP_BYTE_ARRAY6_TYPE: detail->Append("byte6"); break;
+			case FWP_V4_ADDR_MASK:
+			{
+				detail->Append("IPv4=");
+				IPAddress^ addr = gcnew IPAddress(ntohl(c->conditionValue.v4AddrMask->addr));
+				UINT8 prefix = 0;
+				while (prefix < 32)
+				{
+					if ((ntohl(c->conditionValue.v4AddrMask->mask) & ((UINT32)1 << (31 - i))) == 0)
+					{
+						break;
+					}
+					prefix++;
+				}
+				detail->Append(addr->ToString());
+				detail->Append("/");
+				detail->Append(prefix);
+				break;
+			}
+			case FWP_V6_ADDR_MASK:
+			{
+				detail->Append("IPv6=");
+				array<Byte>^ buf = gcnew array<Byte>(16);
+				Marshal::Copy((IntPtr)c->conditionValue.v6AddrMask->addr, buf, 0, 16);
+				IPAddress^ addr = gcnew IPAddress(buf);
+				UINT8 prefix = c->conditionValue.v6AddrMask->prefixLength;
+				detail->Append(addr->ToString());
+				detail->Append("/");
+				detail->Append(prefix);
+				break;
+			}
+			case FWP_RANGE_TYPE:
+			{
+				detail->Append("range=(");
+#define XXXXXXXXXX(CV) \
+				switch (CV.type) \
+				{ \
+				case FWP_EMPTY: detail->Append("empty"); break; \
+				case FWP_UINT8: detail->Append("uint8="); detail->Append(CV.uint8); break; \
+				case FWP_UINT16: detail->Append("uint16="); detail->Append(CV.uint16); break; \
+				case FWP_UINT32: detail->Append("uint32="); detail->Append(CV.uint32); break; \
+				case FWP_UINT64: detail->Append("uint64="); detail->Append(*CV.uint64); break; \
+				case FWP_INT8: detail->Append("int8="); detail->Append(CV.int8); break; \
+				case FWP_INT16: detail->Append("int16="); detail->Append(CV.int16); break; \
+				case FWP_INT32: detail->Append("int32="); detail->Append(CV.int32); break; \
+				case FWP_INT64: detail->Append("int64="); detail->Append(*CV.int64); break; \
+				case FWP_FLOAT: detail->Append("float="); detail->Append(CV.float32); break; \
+				case FWP_DOUBLE: detail->Append("double="); detail->Append(*CV.double64); break; \
+				case FWP_BYTE_ARRAY16_TYPE: detail->Append("byte16"); break; \
+				case FWP_BYTE_BLOB_TYPE: detail->Append("blob"); break; \
+				case FWP_SID: detail->Append("sid"); break; \
+				case FWP_SECURITY_DESCRIPTOR_TYPE: detail->Append("sd"); break; \
+				case FWP_TOKEN_INFORMATION_TYPE: detail->Append("token_info"); break; \
+				case FWP_TOKEN_ACCESS_INFORMATION_TYPE: detail->Append("token_access"); break; \
+				case FWP_UNICODE_STRING_TYPE: detail->Append("string"); break; \
+				case FWP_BYTE_ARRAY6_TYPE: detail->Append("byte6"); break; \
+				case FWP_V4_ADDR_MASK: \
+				{ \
+					detail->Append("IPv4="); \
+					IPAddress^ addr = gcnew IPAddress(ntohl(CV.uint32)); \
+					detail->Append(addr->ToString()); \
+					break; \
+				} \
+				case FWP_V6_ADDR_MASK: \
+				{ \
+					detail->Append("IPv6="); \
+					array<Byte>^ buf = gcnew array<Byte>(16); \
+					Marshal::Copy((IntPtr)CV.byteArray16, buf, 0, 16); \
+					IPAddress^ addr = gcnew IPAddress(buf); \
+					detail->Append(addr->ToString()); \
+					break; \
+				} \
+				default: detail->Append("unknown"); break; \
+				}
+
+				XXXXXXXXXX(c->conditionValue.rangeValue->valueLow)
+				detail->Append(",");
+				XXXXXXXXXX(c->conditionValue.rangeValue->valueHigh)
+				detail->Append(")");
+				break;
+			}
+			default: detail->Append("unknown"); break;
+			}
+			detail->Append("])");
+		}
+		detail->Append("]");
+
+		ret[f->filterId] = detail->ToString();
 	}
 
 	if (pFilter != NULL)
