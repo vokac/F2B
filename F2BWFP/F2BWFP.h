@@ -258,6 +258,7 @@ namespace F2B {
 		Dictionary<UInt64, String^>^ List(bool details);
 
 	private:
+		void List(bool details, GUID layer, Dictionary<UInt64, String^>^ list);
 		//void SetCondition(FWPM_FILTER_CONDITION &fwpFilterCondition, IPAddress^ addr);
 		//void SetCondition(FWPM_FILTER_CONDITION &fwpFilterCondition, IPAddress^ addr, int prefix);
 		//void SetCondition(FWPM_FILTER_CONDITION &fwpFilterCondition, IPAddress^ addrFirst, IPAddress^ addrLast);

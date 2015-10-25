@@ -1513,6 +1513,15 @@ void Firewall::Cleanup()
 // List all filter rules added by this module
 Dictionary<UInt64, String^>^ Firewall::List(bool details)
 {
+	Dictionary<UInt64, String^>^ ret = gcnew Dictionary<UInt64, String^>();
+	List(details, FWPM_LAYER_INBOUND_IPPACKET_V4, ret);
+	List(details, FWPM_LAYER_INBOUND_IPPACKET_V6, ret);
+	return ret;
+}
+
+
+void Firewall::List(bool details, GUID layer, Dictionary<UInt64, String^>^ list)
+{
 	OutputDebugString(L"Firewall::List");
 
 	DWORD rc = ERROR_SUCCESS;
@@ -1524,7 +1533,7 @@ Dictionary<UInt64, String^>^ Firewall::List(bool details)
 	// return only subset of filter rules
 	FWPM_FILTER_ENUM_TEMPLATE enumTemplate;
 	ZeroMemory(&enumTemplate, sizeof(FWPM_FILTER_ENUM_TEMPLATE));
-	enumTemplate.layerKey = FWPM_LAYER_INBOUND_IPPACKET_V4;
+	enumTemplate.layerKey = layer;
 	enumTemplate.providerKey = (GUID *)&F2BFW_PROVIDER_KEY;
 	enumTemplate.actionMask = 0xFFFFFFFF;
 
@@ -1540,7 +1549,6 @@ Dictionary<UInt64, String^>^ Firewall::List(bool details)
 		throw gcnew FirewallException(rc, "Firewall::List: FwpmFilterEnum failed (" + GetErrorText(rc) + ")");
 	}
 
-	Dictionary<UInt64, String^>^ ret = gcnew Dictionary<UInt64, String^>();
 	for (UINT32 i = 0; i < nFilter; i++)
 	{
 		FWPM_FILTER *f = pFilter[i];
@@ -1553,7 +1561,7 @@ Dictionary<UInt64, String^>^ Firewall::List(bool details)
 
 		if (!details)
 		{
-			ret[f->filterId] = gcnew String(f->displayData.name);
+			list[f->filterId] = gcnew String(f->displayData.name);
 			continue;
 		}
 
@@ -1776,7 +1784,7 @@ Dictionary<UInt64, String^>^ Firewall::List(bool details)
 		}
 		detail->Append("]");
 
-		ret[f->filterId] = detail->ToString();
+		list[f->filterId] = detail->ToString();
 	}
 
 	if (pFilter != NULL)
@@ -1789,8 +1797,6 @@ Dictionary<UInt64, String^>^ Firewall::List(bool details)
 		OutputDebugString(FormatErrorText(L"Firewall::List: FwpmFilterDestroyEnumHandle failed: ", rc));
 		//throw gcnew FirewallException(rc, "Firewall::List: FwpmFilterDestroyEnumHandle failed (" + GetErrorText(rc) + ")");
 	}
-
-	return ret;
 }
 
 
