@@ -1,0 +1,104 @@
+<?xml version="1.0" encoding="utf-8"?>
+<configuration>
+  <configSections>
+    <section name="f2bSection" type="F2B.F2BSection, F2BLogAnalyzer, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null"/>
+  </configSections>
+
+  <startup>
+    <supportedRuntime version="v4.0" sku=".NETFramework,Version=v4.5"/>
+  </startup>
+
+  <!-- Fail2ban configuratin section -->
+  <f2bSection>
+
+    <!-- Analyze date from local event log -->
+    <inputs>
+      <input name="local_eventlog" type="EventLog"/>
+    </inputs>
+
+    <selectors>
+      <!-- Audit failures (Keywords=0x10000000000000) -->
+      <selector name="login" input_type="EventLog">
+        <query>
+          <![CDATA[
+            <Select Path="Security">*[System[(band(Keywords,4503599627370496))]]</Select>
+            <Suppress Path="Security">
+              (*[System[(EventID='4768')]] or *[System[(EventID='4771')]])
+              and
+              *[EventData[Data[@Name='Status'] and (Data!='0x18')]]
+            </Suppress>
+          ]]>
+        </query>
+        <address xpath="Event/EventData/Data[@Name='IpAddress']"/>
+        <port xpath="Event/EventData/Data[@Name='IpPort']"/>
+        <username xpath="Event/EventData/Data[@Name='TargetUserName']"/>
+        <domain xpath="Event/EventData/Data[@Name='TargetDomainName']"/>
+      </selector>
+    </selectors>
+
+    <!-- Parameters for log event producer/consumer queue -->
+    <queue>
+      <maxsize>100000</maxsize>
+      <consumers>1</consumers>
+    </queue>
+
+    <processors>
+      <!-- +=======================================+ -->
+      <!-- | Selected log event processing section | -->
+      <!-- +=======================================+ -->
+      <processor name="whitelist" type="Range">
+        <description>Whitelist IP harmless addresses</description>
+        <ranges>
+          <range network="127.0.0.1"/>
+          <range network="192.0.2.0/24"/>
+          <range network="::1/128"/>
+          <range network="2001:db8::/32"/>
+        </ranges>
+        <goto success="last"/>
+      </processor>
+      <processor name="fail2ban" type="Fail2ban">
+        <description>Fail2ban configuration with 10 failed logins within 60 seconds</description>
+        <options>
+          <option key="findtime" value="60"/>
+          <option key="history" value="all"/>
+          <option key="tresholds" value="hard"/>
+          <option key="treshold.hard.maxretry" value="10"/>
+          <option key="treshold.hard.bantime" value="180"/>
+          <option key="treshold.hard.repeat" value="160"/>
+          <option key="treshold.hard.action" value="action_fail2ban_hard"/>
+        </options>
+      </processor>
+      <processor name="end" type="Stop"/>
+
+      <!-- +==================================================+ -->
+      <!-- | Action executed after reaching fail2ban treshold | -->
+      <!-- +==================================================+ -->
+      <processor name="action_fail2ban_hard" type="Label"/>
+      <!-- Use this processor if you configured distributed Fail2ban -->
+      <!--
+      <processor name="action_fail2ban_hard_msmq" type="Fail2banMSMQ">
+        <description>Send message to F2BFW service using MSMQ</description>
+        <options>
+          <option key="queue_name" value=".\private$\F2BProducer"/>
+        </options>
+        <goto on_error_next="true"/>
+      </processor>
+      -->
+      <!-- Use this processor if you want to use standalone Fail2ban -->
+      <processor name="action_fail2ban_hard_wfp" type="Fail2banWFP">
+        <description>Ban IP address reached fail2ban treshold with local firewall</description>
+        <goto on_error_next="true"/>
+      </processor>
+      <processor name="action_fail2ban_hard_end" type="Stop"/>
+
+      <!--
+      Last dummy processor that could serve as label when we want to skip
+      evaluation of all remaining processors.
+      -->
+      <processor name="last" type="Stop"/>
+
+    </processors>
+
+  </f2bSection>
+
+</configuration>

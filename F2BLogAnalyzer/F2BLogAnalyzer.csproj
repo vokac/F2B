@@ -105,9 +105,11 @@
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config">
+    <None Include="App.config" />
+    <None Include="App.config.full">
       <SubType>Designer</SubType>
     </None>
+    <None Include="App.config.minimal" />
   </ItemGroup>
   <ItemGroup>
     <BootstrapperPackage Include=".NETFramework,Version=v4.5.2">
