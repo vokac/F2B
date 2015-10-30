@@ -12,8 +12,8 @@ Requirements
 ------------
 
 * Windows Vista and newer
-* Visual C++ Redistributable for Visual Studio 2015
 * .Net framework 4.5 (Windows Vista, 7, 2008 Server)
+* Visual C++ Redistributable for Visual Studio 2015 ("optional")
 * Microsoft Message Queue (optional, for distributed Fali2ban)
 * Visual Studio Community 2015 (optional, for building sources)
 
@@ -418,11 +418,35 @@ This configuration is used by `Account` processor.
 
 ### Command line options
 
-* Standalone (running F2B on one machine)
+* Standalone I (F2B for one machine)
 
 ```
 c:\F2B\F2BFirewall.exe add-wfp
-c:\F2B\F2BLogAnalyzer.exe install -c c:\F2B\F2BLogAnalyzer.exe.config \
+c:\F2B\F2BLogAnalyzer.exe install \
+        -c c:\F2B\F2BLogAnalyzer.exe.config \
+        -g c:\F2B\F2BLogAnalyzer.log -l ERROR
+sc start F2BLA
+```
+
+* Standalone II (F2B for one machine, no dependency on Microsoft Message
+  Queue installation)
+
+```
+c:\F2B\F2BFirewall.exe add-wfp
+c:\F2B\F2BLogAnalyzer.nomsmq.exe install \
+        -c c:\F2B\F2BLogAnalyzer.exe.config \
+        -g c:\F2B\F2BLogAnalyzer.log -l ERROR
+sc start F2BLA
+```
+
+* Standalone III (F2B for one machine, use slow COM FirewallAPI that can't
+  handle more than few tousands F2B filter rules, but this binary has no
+  external dependency on Visual C++ Redistributable package or Microsoft
+  Message Queue installation)
+
+```
+c:\F2B\F2BLogAnalyzer.standalone.exe install \
+        -c c:\F2B\F2BLogAnalyzer.exe.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
 sc start F2BLA
 ```

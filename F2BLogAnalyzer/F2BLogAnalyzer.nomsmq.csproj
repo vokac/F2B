@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{EA3E584F-EB31-40E0-8E13-6DCD2F7B05E8}</ProjectGuid>
+    <ProjectGuid>{62E89C80-8CED-42EB-BCCC-9D42A0D8C88F}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>F2B</RootNamespace>
-    <AssemblyName>F2BLogAnalyzer</AssemblyName>
+    <AssemblyName>F2BLogAnalyzer.nomsmq</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -59,7 +59,6 @@
     <Reference Include="System.Core" />
     <Reference Include="System.DirectoryServices" />
     <Reference Include="System.DirectoryServices.Protocols" />
-    <Reference Include="System.Messaging" />
     <Reference Include="System.Runtime.Caching" />
     <Reference Include="System.ServiceProcess" />
     <Reference Include="System.Xml.Linq" />
@@ -84,7 +83,6 @@
     <Compile Include="processors\Fail2banFw.cs" />
     <Compile Include="processors\Fail2banWFP.cs" />
     <Compile Include="processors\Fail2banCmd.cs" />
-    <Compile Include="processors\Fail2banMSMQ.cs" />
     <Compile Include="processors\Input.cs" />
     <Compile Include="processors\Label.cs" />
     <Compile Include="processors\Logger.cs" />
