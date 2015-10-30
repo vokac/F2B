@@ -38,7 +38,7 @@ namespace F2B
             Console.WriteLine("  list-filters        list all F2BFW filters");
             Console.WriteLine("  add-filter          add F2BFW filte rule");
             Console.WriteLine("  remove-filter       remove F2BFW filter rule with filterId");
-            Console.WriteLine("  remove-all-filters  remove all F2BFW filters");
+            Console.WriteLine("  remove-filters      remove all F2BFW filters");
             Console.WriteLine("  remove-expired-filters remove expired F2BFW filters");
             Console.WriteLine("  remove-unknown-filters remove F2BFW filters with invalid name");
             Console.WriteLine("  list-wfp            show F2B WFP structures");
@@ -607,7 +607,7 @@ namespace F2B
                         Environment.Exit(1);
                     }
                 }
-                else if (command.ToLower() == "remove-all-filters")
+                else if (command.ToLower() == "remove-filters")
                 {
                     try
                     {
