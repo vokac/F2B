@@ -376,7 +376,7 @@
           <range network="2001:db8::/32"/>
         </ranges>
         <options>
-          <option key="email" value="whitelist-admin@example.com"/>
+          <option key="mail" value="whitelist-admin@example.com"/>
         </options>
         <!-- apply this processor to matched log events and jump to last processor -->
         <goto success="last"/>
@@ -519,31 +519,35 @@
       <processor name="action_test" type="Label"/>
       <processor name="action_test_mail" type="Mail">
         <options>
-          <option key="sender" value="helpdesk@example.com"/>
-          <option key="recipient" value="f2b-admin@example.com,${RangeFile.email}"/>
-          <option key="subject" value="[F2B] Fail2Ban[${Fail2ban.module}] reached ${Fail2ban.treshold} treshold for ${Fail2ban.address}/${Fail2ban.prefix}"/>
-          <option key="body" value="Fail2ban:
-  module: ${Fail2ban.module}
-  address: ${Fail2ban.address}
-  prefix: ${Fail2ban.prefix}
-  treshold: ${Fail2ban.treshold}
+          <option key="sender" value="f2b@example.com"/>
+          <option key="recipient" value="f2b-admin@example.com,${${RangeFile.Last}.Mail}"/>
+          <option key="subject" value="[F2B] Fail2Ban[${Fail2ban.Last}] reached ${${Fail2ban.Last}.Treshold} treshold for ${${Fail2ban.Last}.Address}/${${Fail2ban.Last}.Prefix}"/>
+          <option key="body" value="List of variables
+
+Fail2ban:
+  all: ${Fail2ban.All}
+  last: ${Fail2ban.Last}
+  ${Fail2ban.Last}.Address: ${${Fail2ban.Last}.Address}
+  ${Fail2ban.Last}.Prefix: ${${Fail2ban.Last}.Prefix}
+  ${Fail2ban.Last}.FailCnt: ${${Fail2ban.Last}.FailCnt}
+  ${Fail2ban.Last}.Treshold: ${${Fail2ban.Last}.Treshold}
+  ${Fail2ban.Last}.Bantime: ${${Fail2ban.Last}.Bantime}
+  ${Fail2ban.Last}.Expiration: ${${Fail2ban.Last}.Expiration}
 
 RangeFile:
-  range: ${RangeFile.range}
-  email: ${RangeFile.email}
+  all: ${RangeFile.All}
+  last: ${RangeFile.Last}
+  ${RangeFile.Last}.Range: ${${RangeFile.Last}.Range}
+  ${RangeFile.Last}.Mail: ${${RangeFile.Last}.Mail}
 
 Event:
-  timestamp: ${Event.Timestamp}
-  hostname: ${Event.Hostname}
   id: ${Event.Id}
+  recordid: ${Event.RecordId}
+  timestamp: ${Event.Timestamp}
+  created: ${Event.TimeCreated}
+  hostname: ${Event.Hostname}
   input: ${Event.Input}
   selector: ${Event.Selector}
-  recordid: ${Event.RecordId}
-  eventid: ${Event.EventId}
-  created: ${Event.TimeCreated}
-  machine: ${Event.MachineName}
-  provider: ${Event.ProviderName}
-  process: ${Event.ProcessId}
   address: ${Event.Address}
   port: ${Event.Port}
   username: ${Event.Username}
@@ -559,7 +563,7 @@ Event:
           <option key="file" value="c:\F2B\fail2ban.log"/>
           <option key="size" value="1073741824"/>
           <option key="rotate" value="4"/>
-          <option key="template" value="${Event.Id}	${Event.Timestamp}	${Event.TimeCreated}	${Event.Hostname}	${Event.InputName}	${Event.SelectorName}	${Event.Status}	${Event.RecordId}	${Event.Address}	${Event.Port}	${Event.Username}	${Event.Domain}
+          <option key="template" value="${Event.Timestamp}	${Event.TimeCreated}	${Event.Hostname}	${Event.Id}	${Fail2ban.Last}	${${Fail2ban.Last}.Treshold}	${${Fail2ban.Last}.Address}	${${Fail2ban.Last}.Prefix}
 "/>
           <option key="synchronized" value="true"/>
         </options>
@@ -582,9 +586,9 @@ Event:
           <option key="columns" value="timestamp,hostname,module,address,treshold"/>
           <option key="column.timestamp" value="${Event.Timestamp}"/>
           <option key="column.hostname" value="${Event.Hostname}"/>
-          <option key="column.module" value="${Fail2ban.module}"/>
-          <option key="column.address" value="${Fail2ban.address}/${Fail2ban.prefix}"/>
-          <option key="column.treshold" value="${Fail2ban.treshold}"/>
+          <option key="column.module" value="${Fail2ban.Last}"/>
+          <option key="column.address" value="${${Fail2ban.Last}.Address}/${${Fail2ban.Last}.Prefix}"/>
+          <option key="column.treshold" value="${${Fail2ban.Last}.Treshold}"/>
         </options>
       </processor>
       <processor name="action_test_msmq" type="Fail2banMSMQ">
@@ -601,7 +605,7 @@ Event:
         <description>Execute F2BFirewall.exe to add local WFP filter (this module can be used to run arbitrary executable / script)</description>
         <options>
           <option key="path" value="c:\F2B\F2BFirewall.exe"/> <!-- path to F2BFirewall.exe executable -->
-          <option key="args" value="add-filter /address ${Fail2ban.address} /expiration ${Fail2ban.expiration}/${Fail2ban.prefix}"/> <!-- executable arguments -->
+          <option key="args" value="add-filter /address ${${Fail2ban.Last}.Address} /expiration ${${Fail2ban.Last}.Expiration}/${${Fail2ban.Last}.Prefix}"/> <!-- executable arguments -->
           <option key="max_ignore" value="60"/> <!-- maximum time in seconds we ignore message with same parameters (minimum is real bantime/100) -->
           <option key="bantime" value="600"/> <!-- used only if Fail2ban module doesn't provide specific value -->
         </options>
@@ -615,8 +619,8 @@ Event:
         <options>
           <option key="sender" value="helpdesk@example.com"/>
           <option key="recipient" value="f2b-admin@example.com"/>
-          <option key="subject" value="[F2B] Fail2Ban[${Fail2ban.module}] reached ${Fail2ban.treshold} treshold for ${Fail2ban.address}/${Fail2ban.prefix}"/>
-          <option key="body" value="module: ${Fail2ban.module}
+          <option key="subject" value="[F2B] Fail2Ban[${Fail2ban.Last}] reached ${${Fail2ban.Last}.Treshold} treshold for ${${Fail2ban.Last}.Address}/${${Fail2ban.Last}.Prefix}"/>
+          <option key="body" value="module: ${Fail2ban.Last}
 address: ${Fail2ban.address}
 prefix: ${Fail2ban.prefix}
 treshold: ${Fail2ban.treshold}
@@ -632,11 +636,11 @@ treshold: ${Fail2ban.treshold}
         <options>
           <option key="sender" value="helpdesk@example.com"/>
           <option key="recipient" value="f2b-admin@example.com"/>
-          <option key="subject" value="[F2B] Fail2Ban[${Fail2ban.module}] reached ${Fail2ban.treshold} treshold for ${Fail2ban.address}/${Fail2ban.prefix}"/>
-          <option key="body" value="module: ${Fail2ban.module}
-address: ${Fail2ban.address}
-prefix: ${Fail2ban.prefix}
-treshold: ${Fail2ban.treshold}
+          <option key="subject" value="[F2B] Fail2Ban[${Fail2ban.Last}] reached ${${Fail2ban.Last}.Treshold} treshold for ${${Fail2ban.Last}.Address}/${${Fail2ban.Last}.Prefix}"/>
+          <option key="body" value="module: ${Fail2ban.Last}
+address: ${${Fail2ban.Last}.Address}
+prefix: ${${Fail2ban.Last}.Prefix}
+treshold: ${${Fail2ban.Last}.Treshold}
 "/>
         </options>
         <goto on_error_next="true"/>

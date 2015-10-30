@@ -25,7 +25,7 @@ namespace F2B.processors
                 path = Environment.ExpandEnvironmentVariables(config.Options["path"].Value);
             }
 
-            args = "add-filter /address ${Fail2ban.address} /expiration ${Fail2ban.expiration}/${Fail2ban.prefix}";
+            args = "add-filter /address ${${Fail2ban.Last}.Address} /expiration ${${Fail2ban.Last}.Expiration}/${${Fail2ban.Last}.Prefix}";
             if (config.Options["args"] != null)
             {
                 args = Environment.ExpandEnvironmentVariables(config.Options["args"].Value);

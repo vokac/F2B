@@ -688,35 +688,38 @@ namespace F2B.processors
                     continue;
 
                 Treshold treshold = tresholds[i];
+                int tmpPrefix = prefix;
+                IPAddress tmpAddr = addr;
+                long expiration = now + TimeSpan.FromSeconds(treshold.Bantime).Ticks;
 
-                Log.Info("Fail2ban[" + Name + "]: reached treshold "
-                    + treshold.Name + " (" + treshold.MaxRetry + "&"
-                    + failcnt + ") for " + addr + "/" + prefix);
-
-                if (string.IsNullOrEmpty(treshold.Action))
-                    continue;
-
-                evtlog.SetProcData("Fail2ban.module", Name);
                 if (addr.IsIPv4MappedToIPv6)
                 {
                     // workaround for buggy MapToIPv4 implementation
-                    evtlog.SetProcData("Fail2ban.address", Fixes.MapToIPv4(addr));
+                    tmpAddr = Fixes.MapToIPv4(addr);
+                    tmpPrefix = prefix - 96;
+                }
+
+                Log.Info("Fail2ban[" + Name + "]: reached treshold "
+                        + treshold.Name + " (" + treshold.MaxRetry + "&"
+                        + failcnt + ") for " + tmpAddr + "/" + tmpPrefix);
+
+                if (evtlog.HasProcData("Fail2ban.All"))
+                {
+                    string all = evtlog.GetProcData<string>("Fail2ban.All");
+                    evtlog.SetProcData("Fail2ban.All", all + "," + Name);
                 }
                 else
                 {
-                    evtlog.SetProcData("Fail2ban.address", addr);
+                    evtlog.SetProcData("Fail2ban.All", Name);
                 }
-                evtlog.SetProcData("Fail2ban.prefix", prefix);
-                evtlog.SetProcData("Fail2ban.bantime", treshold.Bantime);
-                evtlog.SetProcData("Fail2ban.expiration", now + TimeSpan.FromSeconds(treshold.Bantime).Ticks);
-                evtlog.SetProcData("Fail2ban.treshold", treshold.Name);
-                //evtlog.SetProcData("Fail2ban", Name);
-                //evtlog.SetProcData(Name + ".address", addr);
-                //evtlog.SetProcData(Name + ".prefix", prefix);
-                //evtlog.SetProcData(Name + ".failcnt", failcnt);
-                //evtlog.SetProcData(Name + ".treshold", treshold.Name);
-                //evtlog.SetProcData(Name + "." + treshold.Name + ".MaxRetry", treshold.MaxRetry);
-                //evtlog.SetProcData(Name + "." + treshold.Name + ".Action", treshold.Action);
+                evtlog.SetProcData("Fail2ban.Last", Name);
+
+                evtlog.SetProcData(Name + ".Address", tmpAddr);
+                evtlog.SetProcData(Name + ".Prefix", tmpPrefix);
+                evtlog.SetProcData(Name + ".FailCnt", failcnt);
+                evtlog.SetProcData(Name + ".Bantime", treshold.Bantime);
+                evtlog.SetProcData(Name + ".Expiration", expiration);
+                evtlog.SetProcData(Name + ".Treshold", treshold.Name);
 
                 // Add to "action" queue
                 Produce(new EventEntry(evtlog), treshold.Action);

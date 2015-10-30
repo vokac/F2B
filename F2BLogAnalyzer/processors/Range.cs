@@ -12,7 +12,7 @@ namespace F2B.processors
     {
         #region Fields
         private Dictionary<IPAddress, int> ranges;
-        private string email;
+        private string mail;
         #endregion
 
         #region Constructors
@@ -30,10 +30,10 @@ namespace F2B.processors
             }
             // Optimization: remove overlapping IP subranges
 
-            email = null;
-            if (config.Options["email"] != null)
+            mail = null;
+            if (config.Options["mail"] != null)
             {
-                email = config.Options["email"].Value;
+                mail = config.Options["mail"].Value;
             }
         }
         #endregion
@@ -41,7 +41,7 @@ namespace F2B.processors
         #region Override
         public override string Execute(EventEntry evtlog)
         {
-            bool contain = false;
+            string firstRange = null;
 
             foreach (KeyValuePair<IPAddress, int> range in ranges)
             {
@@ -54,19 +54,31 @@ namespace F2B.processors
 
                 if (range.Key.Equals(network))
                 {
-                    contain = true;
-                    evtlog.SetProcData("Range.range", range.Key + "/" + range.Value);
-                    evtlog.SetProcData("Range.email", email);
-                    evtlog.SetProcData(Name + ".range", range.Key + "/" + range.Value);
-                    evtlog.SetProcData(Name + ".email", email);
+                    firstRange = range.Key + "/" + range.Value;
                     break;
                 }
             }
 
-            if (!contain)
+            if (firstRange == null)
+            {
                 return goto_failure;
+            }
+
+            if (evtlog.HasProcData("Range.All"))
+            {
+                string all = evtlog.GetProcData<string>("Range.All");
+                evtlog.SetProcData("Range.All", all + "," + Name);
+            }
             else
-                return goto_success;
+            {
+                evtlog.SetProcData("Range.All", Name);
+            }
+            evtlog.SetProcData("Range.Last", Name);
+
+            evtlog.SetProcData(Name + ".Range", firstRange);
+            evtlog.SetProcData(Name + ".Mail", mail);
+
+            return goto_success;
         }
 
 #if DEBUG
@@ -79,7 +91,7 @@ namespace F2B.processors
                 output.WriteLine("config range: {0}/{1}", range.Key, range.Value);
             }
 
-            output.WriteLine("config email: {0}", email);
+            output.WriteLine("config email: {0}", mail);
         }
 #endif
         #endregion

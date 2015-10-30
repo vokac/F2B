@@ -44,18 +44,24 @@ namespace F2B.processors
 
         public override string Execute(EventEntry evtlog)
         {
-            if (!evtlog.HasProcData("Fail2ban.address"))
+            if (!evtlog.HasProcData("Fail2ban.Last"))
             {
-                throw new ArgumentException("Missing Fail2ban.address, invalid/misspelled configuration?!");
+                throw new ArgumentException("Missing Fail2ban.Last, no Fail2ban processor reached fail treshold");
             }
-            if (!evtlog.HasProcData("Fail2ban.prefix"))
+            string fail2banName = evtlog.GetProcData<string>("Fail2ban.Last");
+
+            if (!evtlog.HasProcData(fail2banName + ".Address"))
             {
-                throw new ArgumentException("Missing Fail2ban.prefix, invalid/misspelled configuration?!");
+                throw new ArgumentException("Missing " + fail2banName + ".Address!?");
+            }
+            if (!evtlog.HasProcData(fail2banName + ".Prefix"))
+            {
+                throw new ArgumentException("Missing " + fail2banName + ".Prefix!?");
             }
 
-            IPAddress addr = evtlog.GetProcData<IPAddress>("Fail2ban.address");
-            int prefix = evtlog.GetProcData<int>("Fail2ban.prefix");
-            int btime = evtlog.GetProcData("Fail2ban.bantime", bantime);
+            IPAddress addr = evtlog.GetProcData<IPAddress>(fail2banName + ".Address");
+            int prefix = evtlog.GetProcData<int>(fail2banName + ".Prefix");
+            int btime = evtlog.GetProcData(fail2banName + ".Bantime", bantime);
 
             // check in memory cache with recently send F2B messages
             string recentKey = null;

@@ -232,20 +232,30 @@ namespace F2B.processors
                 return goto_failure;
             }
 
+
+            if (evtlog.HasProcData("RangeFile.All"))
+            {
+                string all = evtlog.GetProcData<string>("RangeFile.All");
+                evtlog.SetProcData("RangeFile.All", all + "," + Name);
+            }
+            else
+            {
+                evtlog.SetProcData("RangeFile.All", Name);
+            }
+            evtlog.SetProcData("RangeFile.Last", Name);
+
             // try to find email address for minimum IP range
             foreach (int prefix in prefixes.Reverse())
             {
-                string email;
+                string mail;
                 IPAddress network = Utils.GetNetwork(evtlog.Address, prefix);
 
-                if (rangesEmail.TryGetValue(network + "/" + prefix, out email))
+                if (rangesEmail.TryGetValue(network + "/" + prefix, out mail))
                 {
-                    evtlog.SetProcData("RangeFile.range", network + "/" + prefix);
-                    evtlog.SetProcData(Name + ".range", network + "/" + prefix);
-                    if (!string.IsNullOrEmpty(email))
+                    evtlog.SetProcData(Name + ".Range", network + "/" + prefix);
+                    if (!string.IsNullOrEmpty(mail))
                     {
-                        evtlog.SetProcData("RangeFile.email", email);
-                        evtlog.SetProcData(Name + ".email", email);
+                        evtlog.SetProcData(Name + ".Mail", mail);
                     }
                     break;
                 }
