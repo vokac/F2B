@@ -12,12 +12,14 @@ namespace F2B.processors
     public class Fail2banProcessor : BaseProcessor, IThreadSafeProcessor
     {
         #region Fields
+        private string stateFile;
         private long findtime;
         private int ipv4_prefix;
         private int ipv6_prefix;
 
         private HistoryType history;
         private int history_fixed_count;
+        private double history_fixed_decay;
         private int history_rrd_count;
         private int history_rrd_repeat;
 
@@ -31,6 +33,8 @@ namespace F2B.processors
         private long clockskew;
 
         private Object thisLock = new Object();
+
+        private static int MAX_COUNT = 10000;
         #endregion
 
         private enum HistoryType
@@ -117,6 +121,8 @@ namespace F2B.processors
         {
             int Count { get; }
             int Add(long timestamp);
+            void Load(BinaryReader reader);
+            void Save(BinaryWriter writer);
 #if DEBUG
             void Debug(StreamWriter output);
 #endif
@@ -129,6 +135,18 @@ namespace F2B.processors
             private long last;
 
             public FailAll(long findtime)
+            {
+                Init(findtime);
+            }
+
+            public FailAll(BinaryReader reader, long findtime)
+            {
+                this.findtime = findtime;
+
+                Load(reader);
+            }
+
+            private void Init(long findtime)
             {
                 this.findtime = findtime;
                 this.data = new Queue<long>();
@@ -182,6 +200,37 @@ namespace F2B.processors
                 return data.Count;
             }
 
+            public void Load(BinaryReader reader)
+            {
+                long tmpFindtime = reader.ReadInt64();
+                int tmpCount = reader.ReadInt32();
+
+                this.data = new Queue<long>(Math.Min(tmpCount, Fail2banProcessor.MAX_COUNT));
+                for (int i = 0; i < tmpCount; i++)
+                {
+                    this.data.Enqueue(reader.ReadInt64());
+                }
+
+                this.last = reader.ReadInt64();
+
+                if (tmpFindtime != this.findtime)
+                {
+                    // different configuration
+                    Init(findtime);
+                }
+            }
+
+            public void Save(BinaryWriter writer)
+            {
+                writer.Write(findtime);
+                writer.Write(data.Count);
+                foreach (var item in data)
+                {
+                    writer.Write(item);
+                }
+                writer.Write(last);
+            }
+
 #if DEBUG
             public void Debug(StreamWriter output)
             {
@@ -200,6 +249,18 @@ namespace F2B.processors
             private long last; // last cleanup
 
             public FailOne(long findtime)
+            {
+                Init(findtime);
+            }
+
+            public FailOne(BinaryReader reader, long findtime)
+            {
+                this.findtime = findtime;
+
+                Load(reader);
+            }
+
+            private void Init(long findtime)
             {
                 this.findtime = findtime;
                 this.data = 0;
@@ -271,6 +332,26 @@ namespace F2B.processors
                 return data;
             }
 
+            public void Load(BinaryReader reader)
+            {
+                long tmpFindtime = reader.ReadInt64();
+                this.data = reader.ReadInt32();
+                this.last = reader.ReadInt64();
+
+                if (tmpFindtime != this.findtime)
+                {
+                    // different configuration
+                    Init(findtime);
+                }
+            }
+
+            public void Save(BinaryWriter writer)
+            {
+                writer.Write(findtime);
+                writer.Write(data);
+                writer.Write(last);
+            }
+
 #if DEBUG
             public void Debug(StreamWriter output)
             {
@@ -284,17 +365,44 @@ namespace F2B.processors
         private class FailFixed : IFail
         {
             private long findtime;
+            private int count;
+            private double[] decay;
             private int[] data;
             private long start;
             private long last;
             private int sum;
 
-            public FailFixed(long findtime, int cnt)
+            public FailFixed(long findtime, int count, double decay = 1.0)
+            {
+                Init(findtime, count);
+            }
+
+            public FailFixed(BinaryReader reader, long findtime, int count, double decay = 1.0)
+            {
+                this.findtime = findtime;
+                this.count = count;
+                this.decay = null;
+
+                if (decay != 1.0)
+                {
+                    this.decay = new double[count];
+                    this.decay[0] = 1.0;
+                    for (int i = 1; i < count; i++)
+                    {
+                        this.decay[i] = this.decay[i - 1] * decay;
+                    }
+                }
+
+                Load(reader);
+            }
+
+            private void Init(long findtime, int count)
             {
                 long now = DateTime.Now.Ticks;
 
                 this.findtime = findtime;
-                this.data = new int[cnt];
+                this.count = count;
+                this.data = new int[count];
                 this.start = now;
                 this.last = now - findtime;
                 this.sum = 0;
@@ -306,7 +414,20 @@ namespace F2B.processors
                 {
                     Cleanup(DateTime.Now.Ticks);
 
-                    return sum;
+                    if (decay == null)
+                    {
+                        return sum;
+                    }
+                    else
+                    {
+                        double tmp = 0;
+                        for (int i = 0; i < data.Length; i++)
+                        {
+                            tmp += data[i] * decay[i];
+                        }
+
+                        return (int) tmp;
+                    }
                 }
             }
 
@@ -317,8 +438,21 @@ namespace F2B.processors
                     return;
                 }
 
-                if (last + findtime <= now)
+                if (now < start)
                 {
+                    Log.Warn("Fail2ban::FailFixed: now(" + now
+                        + ") < start(" + start + ") ... fixing to "
+                        + ((now / findtime) * findtime + start % findtime));
+                    start = (now / findtime) * findtime + start % findtime;
+                }
+
+                if (last + findtime <= now || last > now)
+                {
+                    if (last > now)
+                    {
+                        Log.Warn("Fail2ban::FailFixed: last(" + last + ") > now(" + now + ")");
+                    }
+
                     for (int i = 0; i < data.Length; i++)
                     {
                         data[i] = 0;
@@ -366,6 +500,45 @@ namespace F2B.processors
                 return sum;
             }
 
+            public void Load(BinaryReader reader)
+            {
+                long tmpFindtime = reader.ReadInt64();
+                int tmpCount = reader.ReadInt32();
+                if (tmpCount > Fail2banProcessor.MAX_COUNT)
+                {
+                    throw new InvalidDataException("invalid state file data count = " + tmpCount);
+                }
+
+                this.data = new int[tmpCount];
+                for (int i = 0; i < tmpCount; i++)
+                {
+                    this.data[i] = reader.ReadInt32();
+                }
+
+                this.start = reader.ReadInt64();
+                this.last = reader.ReadInt64();
+                this.sum = reader.ReadInt32();
+
+                if (tmpFindtime != this.findtime || tmpCount != this.count)
+                {
+                    // different configuration
+                    Init(findtime, count);
+                }
+            }
+
+            public void Save(BinaryWriter writer)
+            {
+                writer.Write(findtime);
+                writer.Write(data.Length);
+                foreach (var item in data)
+                {
+                    writer.Write(item);
+                }
+                writer.Write(start);
+                writer.Write(last);
+                writer.Write(sum);
+            }
+
 #if DEBUG
             public void Debug(StreamWriter output)
             {
@@ -382,12 +555,27 @@ namespace F2B.processors
         private class FailRRD : IFail
         {
             private long findtime;
-            private int cnt;
+            private int count;
             private int repeat;
-            public FailRRD(long findtime, int cnt, int repeat)
+
+            public FailRRD(long findtime, int count, int repeat)
+            {
+                Init(findtime, count, repeat);
+            }
+
+            public FailRRD(BinaryReader reader, long findtime, int count, int repeat)
             {
                 this.findtime = findtime;
-                this.cnt = cnt;
+                this.count = count;
+                this.repeat = repeat;
+
+                Init(findtime, count, repeat);
+            }
+
+            private void Init(long findtime, int count, int repeat)
+            {
+                this.findtime = findtime;
+                this.count = count;
                 this.repeat = repeat;
                 throw new NotImplementedException("FailRRD is not implemented");
             }
@@ -398,6 +586,16 @@ namespace F2B.processors
             }
 
             public int Add(long timestamp)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Load(BinaryReader reader)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Save(BinaryWriter writer)
             {
                 throw new NotImplementedException();
             }
@@ -416,6 +614,7 @@ namespace F2B.processors
             : base(config, service)
         {
             // default values
+            stateFile = null;
             findtime = 600;
             ipv4_prefix = 32;
             ipv6_prefix = 64;
@@ -423,12 +622,18 @@ namespace F2B.processors
 
             history = HistoryType.ALL;
             history_fixed_count = 10;
+            history_fixed_decay = 1.0;
             history_rrd_count = 2;
             history_rrd_repeat = 2;
 
             tresholds = new List<Fail2banProcessor.Treshold>();
 
             // set values from config file
+            if (config.Options["state"] != null)
+            {
+                stateFile = config.Options["state"].Value;
+            }
+
             if (config.Options["findtime"] != null)
             {
                 findtime = long.Parse(config.Options["findtime"].Value);
@@ -466,6 +671,10 @@ namespace F2B.processors
             if (config.Options["history.fixed.count"] != null)
             {
                 history_fixed_count = int.Parse(config.Options["history.fixed.count"].Value);
+            }
+            if (config.Options["history.fixed.decay"] != null)
+            {
+                history_fixed_decay = double.Parse(config.Options["history.fixed.decay"].Value);
             }
             if (config.Options["history.rrd.count"] != null)
             {
@@ -517,11 +726,24 @@ namespace F2B.processors
                 return;
             }
 
+            Cleanup();
+        }
+
+        private void Cleanup()
+        {
+            int dataCountBefore, dataCountAfter;
+            DateTime dataTimeBefore, dataTimeAfter;
+            int[] tresholdCountBefore = new int[tresholds.Count];
+            int[] tresholdCountAfter = new int[tresholds.Count];
+            DateTime tresholdTimeBefore, tresholdTimeAfter;
+
             // cleanup empty / expired fail objects from "data" dictionary
+            Log.Info("Fail2ban[" + Name + "]: cleanup expired data started");
+
             lock (thisLock)
             {
-                Log.Info("Fail2ban[" + Name + "]: cleanup expired data started: "
-                    + data.Count + ")");
+                dataCountBefore = data.Count;
+                dataTimeBefore = DateTime.UtcNow;
 
                 foreach (var s in data.Where(kv => kv.Value.Count == 0).ToList())
                 {
@@ -536,27 +758,44 @@ namespace F2B.processors
                     }
                 }
 
-                Log.Info("Fail2ban[" + Name + "]: cleanup expired data finished: "
-                    + data.Count + ")");
+                dataTimeAfter = DateTime.UtcNow;
+                dataCountAfter = data.Count;
 
+                tresholdTimeBefore = DateTime.UtcNow;
+
+                int tresholdIndex = 0;
                 long now = DateTime.Now.Ticks;
                 foreach (Treshold treshold in tresholds)
                 {
+                    tresholdCountBefore[tresholdIndex] = treshold.Last.Count;
+                    tresholdCountAfter[tresholdIndex] = treshold.Last.Count;
+                    tresholdIndex++;
+
                     if (treshold.Repeat == 0)
                         continue;
-
-                    Log.Info("Fail2ban[" + Name + "]: cleanup expired treshold "
-                        + treshold.Name + " started: " + treshold.Last.Count + ")");
 
                     foreach (var s in treshold.Last.Where(kv => kv.Value + treshold.Repeat * TimeSpan.TicksPerSecond <= now).ToList())
                     {
                         treshold.Last.Remove(s.Key);
                     }
 
-                    Log.Info("Fail2ban[" + Name + "]: cleanup expired treshold "
-                        + treshold.Name + " finished: " + treshold.Last.Count + ")");
+                    tresholdCountAfter[0] = treshold.Last.Count;
                 }
+
+                tresholdTimeAfter = DateTime.UtcNow;
             }
+
+            Log.Info("Fail2ban[" + Name + "]: cleanup expired data ("
+                + dataCountBefore + " -> " + dataCountAfter + ") in "
+                + dataTimeAfter.Subtract(dataTimeBefore).TotalMilliseconds
+                + "ms");
+
+            Log.Info("Fail2ban[" + Name + "]: cleanup expired tresholds ("
+                + string.Join("/", tresholds) + ": "
+                + string.Join("/", tresholdCountBefore) + " -> "
+                + string.Join("/", tresholdCountAfter) + ") in "
+                + tresholdTimeAfter.Subtract(tresholdTimeBefore).TotalMilliseconds
+                + "ms");
         }
 
 
@@ -610,9 +849,101 @@ namespace F2B.processors
                 return true;
             }
         }
+        private void ReadState(string filename)
+        {
+            using (Stream stream = File.Open(filename, FileMode.Open))
+            using (BinaryReader reader = new BinaryReader(stream))
+            {
+                lock (thisLock)
+                {
+                    int nhistory = reader.ReadInt32();
+                    for (int i = 0; i < nhistory; i++)
+                    {
+                        IPAddress addr = new IPAddress(reader.ReadBytes(16));
+                        IFail fail = null;
+
+                        switch (history)
+                        {
+                            case HistoryType.ALL: fail = new FailAll(reader, findtime * TimeSpan.TicksPerSecond); break;
+                            case HistoryType.ONE: fail = new FailOne(reader, findtime * TimeSpan.TicksPerSecond); break;
+                            case HistoryType.FIXED: fail = new FailFixed(reader, findtime * TimeSpan.TicksPerSecond, history_fixed_count, history_fixed_decay); break;
+                            case HistoryType.RRD: fail = new FailRRD(reader, findtime * TimeSpan.TicksPerSecond, history_rrd_count, history_rrd_repeat); break;
+                        }
+
+                        if (fail.Count > 0)
+                        {
+                            data[addr] = fail;
+                        }
+                    }
+                }
+            }
+        }
+
+        private void WriteState(string filename)
+        {
+            Cleanup();
+
+            using (Stream stream = File.Open(filename, FileMode.Create))
+            using (BinaryWriter writer = new BinaryWriter(stream))
+            {
+                lock (thisLock)
+                {
+                    writer.Write(data.Count);
+                    foreach (var item in data)
+                    {
+                        IPAddress addr = item.Key;
+                        IFail fail = item.Value;
+
+                        writer.Write(addr.GetAddressBytes());
+                        fail.Save(writer);
+                    }
+                }
+            }
+        }
         #endregion
 
         #region Override
+        public override void Start()
+        {
+            if (stateFile == null)
+                return;
+
+            if (File.Exists(stateFile))
+            {
+                Log.Info("Fail2ban[" + Name + "]: Load processor state from \""
+                    + stateFile + "\"");
+
+                try
+                {
+                    ReadState(stateFile);
+                }
+                catch (Exception ex)
+                {
+                    Log.Warn("Fail2ban[" + Name + "]: Unable to read state file \""
+                        + stateFile + "\": " + ex.Message);
+                }
+            }
+        }
+
+        public override void Stop()
+        {
+            if (stateFile == null)
+                return;
+
+            Log.Info("Fail2ban[" + Name + "]: Save processor state to \""
+                + stateFile + "\"");
+
+            try
+            {
+                WriteState(stateFile);
+            }
+            catch (Exception ex)
+            {
+                Log.Warn("Fail2ban[" + Name + "]: Unable to write state file \""
+                    + stateFile + "\": " + ex.Message);
+            }
+        }
+
         public override string Execute(EventEntry evtlog)
         {
             // get fail2ban network address for given IP and prefix
@@ -667,7 +998,7 @@ namespace F2B.processors
                     {
                         case HistoryType.ALL: fail = new FailAll(findtime * TimeSpan.TicksPerSecond); break;
                         case HistoryType.ONE: fail = new FailOne(findtime * TimeSpan.TicksPerSecond); break;
-                        case HistoryType.FIXED: fail = new FailFixed(findtime * TimeSpan.TicksPerSecond, history_fixed_count); break;
+                        case HistoryType.FIXED: fail = new FailFixed(findtime * TimeSpan.TicksPerSecond, history_fixed_count, history_fixed_decay); break;
                         case HistoryType.RRD: fail = new FailRRD(findtime * TimeSpan.TicksPerSecond, history_rrd_count, history_rrd_repeat); break;
                     }
 
@@ -739,6 +1070,7 @@ namespace F2B.processors
             output.WriteLine("config cleanup: " + cleanup);
             output.WriteLine("config history: " + history);
             output.WriteLine("config history_fixed_count: " + history_fixed_count);
+            output.WriteLine("config history_fixed_decay: " + history_fixed_decay);
             output.WriteLine("config history_rrd_count: " + history_rrd_count);
             output.WriteLine("config history_rrd_repeat: " + history_rrd_repeat);
             foreach (Treshold treshold in tresholds)

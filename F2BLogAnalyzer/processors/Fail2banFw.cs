@@ -589,6 +589,16 @@ namespace F2B.processors
                     output.WriteLine("  e/f/h: {0}/{1}/{2}", expiration, filterName, BitConverter.ToString(hash).Replace("-", ":"));
                 }
             }
+
+            output.WriteLine("  FwPolicy:");
+            INetFwPolicy2 fwPolicy2 = (INetFwPolicy2)Activator.CreateInstance(typeFWPolicy2);
+            foreach (INetFwRule rule in fwPolicy2.Rules)
+            {
+                if (rule.Name.IndexOf("F2B B64 ") < 0)
+                    continue;
+
+                output.WriteLine("    {0}", rule.Description);
+            }
         }
 #endif
     }

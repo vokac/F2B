@@ -61,6 +61,40 @@ namespace F2B.processors
             base.Debug(output);
             output.WriteLine("FwManager:");
             F2B.FwManager.Instance.Debug(output);
+            output.WriteLine("  WFP Rules:");
+            try
+            {
+                var details = F2B.Firewall.Instance.List(true);
+                foreach (var item in F2B.Firewall.Instance.List())
+                {
+                    try
+                    {
+                        Tuple<long, byte[]> fwname = FwData.DecodeName(item.Value);
+                        string tmp = Convert.ToString(fwname.Item1);
+                        try
+                        {
+                            DateTime tmpExp = new DateTime(fwname.Item1, DateTimeKind.Utc);
+                            tmp = tmpExp.ToLocalTime().ToString();
+                        }
+                        catch (Exception)
+                        {
+                        }
+                        output.WriteLine("    filterId[{0}]/{4}/expiration[{2}]/md5[{3}]",
+                            item.Key, item.Value, tmp,
+                            BitConverter.ToString(fwname.Item2).Replace("-", ":"),
+                            details.ContainsKey(item.Key) ? details[item.Key] : "");
+                    }
+                    catch (ArgumentException)
+                    {
+                        // can't parse filter rule name to F2B structured data
+                        output.WriteLine("    filterId[{0}]/name=[{1}]", item.Key, item.Value);
+                    }
+                }
+            }
+            catch (FirewallException ex)
+            {
+                Log.Error("Unable to list firewall filters: " + ex.Message);
+            }
         }
 #endif
         #endregion

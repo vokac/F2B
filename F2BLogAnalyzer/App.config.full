@@ -124,7 +124,7 @@
             <Suppress Path="Security">
               (*[System[(EventID='4768')]] or *[System[(EventID='4771')]])
               and
-              (*[EventData[Data[@Name='Status']!='0x18']])
+              (*[EventData[Data[@Name='Status']!='0x6']] and *[EventData[Data[@Name='Status']!='0x18']])
             </Suppress>
           ]]>
         </query>
@@ -142,7 +142,7 @@
       </selector>
 
       <!-- Audit success (Keywords=0x8020000000000000) from login attempts to Windows -->
-      <selector name="login_ok" input_type="EventLog" login="success">
+      <selector name="login_success" input_type="EventLog" login="success">
         <!-- (Keywords == 0x8000000000000000 and Keywords == 0x0020000000000000) -->
         <query><![CDATA[
             <Select Path="Security">
@@ -356,7 +356,15 @@
         </options>
       </processor>
       <processor name="login" type="Login">
-        <description>Process only login failure events.</description>
+        <description>Skip events that correspond successfull login</description>
+        <options>
+          <option key="maxsize" value="100000"/>
+          <option key="findtime" value="86400"/>
+          <option key="count" value="24"/>
+          <option key="ipv4_prefix" value="32"/>
+          <option key="ipv6_prefix" value="64"/>
+          <option key="state" value="c:\F2B\login.state"/>
+        </options>
         <goto success="last"/>
       </processor>
       <processor name="case" type="Case">
@@ -470,6 +478,7 @@
           F2B monitoring (prefix /32) and per subnet IPv6 monitoring
           (prefix /64).
           -->
+          <option key="state" value="c:\F2B\fail2ban.state"/>
           <option key="findtime" value="600"/>
           <option key="ipv4_prefix" value="32"/>
           <option key="ipv6_prefix" value="64"/>
@@ -479,6 +488,7 @@
           <option key="history" value="one"/>
           <option key="history" value="fixed"/>
           <option key="history.fixed.count" value="10"/>
+          <option key="history.fixed.decay" value="1.0"/>
           <option key="history" value="rrd"/>
           <option key="history.rrd.count" value="5"/>
           <option key="history.rrd.repeat" value="2"/>
@@ -539,6 +549,11 @@ RangeFile:
   last: ${RangeFile.Last}
   ${RangeFile.Last}.Range: ${${RangeFile.Last}.Range}
   ${RangeFile.Last}.Mail: ${${RangeFile.Last}.Mail}
+
+Login:
+  last: ${Login.Last}
+  ${Login.Last}.Success = ${${Login.Last}.Success}
+  ${Login.Last}.Failure = ${${Login.Last}.Failure}
 
 Event:
   id: ${Event.Id}

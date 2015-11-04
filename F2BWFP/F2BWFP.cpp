@@ -1676,7 +1676,7 @@ void Firewall::List(bool details, GUID layer, Dictionary<UInt64, String^>^ list)
 			case FWP_MATCH_NOT_EQUAL: detail->Append("not_equal"); break;
 			default: detail->Append("unknown"); break;
 			}
-			detail->Append("], value[");
+			detail->Append("],value[");
 			switch (c->conditionValue.type)
 			{
 			case FWP_EMPTY: detail->Append("empty"); break;
