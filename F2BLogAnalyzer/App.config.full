@@ -545,15 +545,15 @@ Fail2ban:
   ${Fail2ban.Last}.Expiration: ${${Fail2ban.Last}.Expiration}
 
 RangeFile:
-  all: ${RangeFile.All}
-  last: ${RangeFile.Last}
-  ${RangeFile.Last}.Range: ${${RangeFile.Last}.Range}
-  ${RangeFile.Last}.Mail: ${${RangeFile.Last}.Mail}
+  all: ${RangeFile.All:=}
+  last: ${RangeFile.Last:=none}
+  ${RangeFile.Last}.Range: ${${RangeFile.Last}.Range:=none}
+  ${RangeFile.Last}.Mail: ${${RangeFile.Last}.Mail:=none}
 
 Login:
-  last: ${Login.Last}
-  ${Login.Last}.Success = ${${Login.Last}.Success}
-  ${Login.Last}.Failure = ${${Login.Last}.Failure}
+  last: ${Login.Last:=none}
+  ${Login.Last}.Success = ${${Login.Last}.Success:=none}
+  ${Login.Last}.Failure = ${${Login.Last}.Failure:=none}
 
 Event:
   id: ${Event.Id}

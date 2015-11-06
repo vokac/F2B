@@ -192,23 +192,33 @@ namespace F2B
                         key = line.Substring(start, end - start);
                     }
 
+                    // parse default value from key
+                    string defval = null;
+                    if (key.Contains(":="))
+                    {
+                        int seppos = key.IndexOf(":=");
+                        defval = key.Substring(seppos + 2);
+                        key = key.Substring(0, seppos);
+                    }
+
                     // replace variable
                     if (repl.ContainsKey(key))
                     {
                         output.Append(repl[key]);
                     }
+                    else if (defval != null)
+                    {
+                        output.Append(defval);
+                    }
+                    else if (empty != null)
+                    {
+                        output.Append(empty);
+                    }
                     else
                     {
-                        if (empty == null)
-                        {
-                            output.Append("${");
-                            output.Append(key);
-                            output.Append("}");
-                        }
-                        else
-                        {
-                            output.Append(empty);
-                        }
+                        output.Append("${");
+                        output.Append(key);
+                        output.Append("}");
                     }
                 }
 
