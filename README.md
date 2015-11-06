@@ -4,8 +4,7 @@ Fail2ban for Windows
 This project is an implementation inspired by unix http://www.fail2ban.org.
 F2B provides windows service that scans log data and detects attempts to guess
 user password. Client IPv4/IPv6 address that causes significant login failures
-can be automatically blocked for requested interval using windows firewall
-configuration.
+can be automatically temporarily blocked using windows firewall configuration.
 
 
 Requirements
@@ -39,7 +38,8 @@ Installation
 ### Executables and libraries
 
 No installation program exists and all binaries (`F2BLogAnalyzer.exe`,
-`F2BQueue.exe`, `F2BFirewall.exe`, `F2BWFP.dll`) must be placed in one directory
+`F2BLogAnalyzer.nomsmq.exe`, `F2BLogAnalyzer.standalone.exe`, `F2BQueue.exe`,
+`F2BFirewall.exe`, `F2BWFP.dll`) must be placed in one directory
 (e.g. `c:\F2B`). F2B service code was written in C# which requires at least
 .Net framework version 4.5. This .Net version is not integral part of older
 windows (Vista, 7, 2008 Server) and must be installed on these systems.
@@ -49,7 +49,9 @@ that can modify windows firewall configuration. This functionality is
 provided by native C++/CLI code compiled in `F2BWFP.dll` library and C++/CLI
 requires redistributable Visual C++ package (x86/x64). You can download
 and install redistributable package directly from Microsoft or you can
-just copy all required libraries in the F2B directory. Be aware that debug
+just copy all required libraries in the F2B directory (`concrt140.dll`,
+`mfc140.dll`, `mfcm140.dll`, `msvcp140.dll`, `ucrtbase.dll`, `vcamp140.dll`,
+`vccorlib140.dll`, `vcomp140.dll`, `vcruntime140.dll`). Be aware that debug
 build of the F2B code needs debug version of C++ libraries and they come
 only with full Visual Studio installation.
 
@@ -333,6 +335,335 @@ command line options).
 
 #### Processors
 
+Processors section is the most important part of the F2B configuration.
+Each well defined log event structure created by F2B input modules and
+filtered by one of the selectors can be passed to the chain of processor
+instances with user defined configuration options. Different processing
+path can be specified based on log event data.
+
+Basic declaration of the processor is same and contains processor unique
+name, type (processor class name), description and link to following
+processor which is called in case execution of current processor did not
+throw any (uncatched) exception. Next processor in configuration file
+is used as a default value for successful processor execution and in
+case of exception the default is empty processor which terminate event
+log processing. Processing is also terminated in case unknown processor
+name.
+
+```xml
+<processor name="unique processor name" type="ProcessorClassName">
+  <description>User defined processor instance description</description>
+  <options>
+    <!-- processor configuration options -->
+    <option key="key1" value="value1"/>
+    <option key="key2" value="value2"/>
+	<!-- ... -->
+  </options>
+  <!-- reference to the next processor (by default set to the
+  processor name defined below this processor configuration)
+  and to the processor called in case of execption (by default
+  processor execution is terminated in case of exception) -->
+  <goto next="label" error="last"/>
+</processor>
+```
+
+#### Label
+
+Simple label that can be used in attributes of the processor goto element.
+
+```xml
+<processor name="unique_label_name" type="Label"/>
+```
+
+#### Stop
+
+This processor terminate processing chain.
+
+```xml
+<processor name="unique_stop_name" type="Stop"/>
+```
+
+#### Parallel
+
+Run specified processors in parallel using separate worker threads.
+
+```xml
+<processor name="parallel" type="Parallel">
+  <description>Example configuration for Parallel processor</description>
+  <options>
+    <option key="processors" value="processor1,processor2,processor3,fail2ban"/>
+  </options>
+</processor>
+```
+
+#### Filters
+
+These kind of processors can be used to branch processor chains based on log
+event data. Their configuration can/should provide two additional `goto`
+element attributes `success` and `failure`.
+
+##### Login
+
+Filter log events according login (audit) success/failure defined as selector
+attribute. This processor also define `procname.Success` and `procname.Failure`
+variable when at least one login succeed in given time period. This information
+can be used to determine that at least one successful login ocured from given
+address range.
+
+```xml
+<processor name="login" type="Login">
+  <description>Skip events that correspond successfull login</description>
+  <options>
+    <option key="maxsize" value="100000"/>
+    <option key="findtime" value="86400"/>
+    <option key="count" value="24"/>
+    <option key="ipv4_prefix" value="32"/>
+    <option key="ipv6_prefix" value="64"/>
+    <option key="state" value="c:\F2B\login.state"/>
+  </options>
+  <goto success="last"/>
+</processor>
+```
+
+##### Range
+
+Filter log events according client address specified directly in XML
+configuration file. It can be used for static list of the IPv4/IPv6
+addresses that requires some special treatment (e.g. not to apply fail2ban
+for your own address range).
+
+```xml
+<processor name="whitelist" type="Range">
+ <description>Whitelist IP addresses</description>
+  <ranges>
+    <range network="127.0.0.0/8"/>
+    <range network="192.0.2.0/24"/>
+    <range network="::1/128"/>
+    <range network="2001:db8::/32"/>
+  </ranges>
+  <options>
+    <!-- create ${whitelist.Mail} variable on successful search -->
+    <option key="mail" value="whitelist-admin@example.com"/>
+  </options>
+  <goto success="last"/>
+</processor>
+```
+
+##### RangeFile
+
+Filter log events according client address read from config file.
+The `filename` is monitored for changes and this module is automatically
+reconfigured with updated data. File format is very simple, each line
+contains IPv4/IPv6 address or address range. Optionally mail separated
+from IPv4/IPv6 address by tabulator can be provided and it is used to
+create `procname.Mail` variable that can be later used e.g. in `Mail`
+processor. Lines starting with hash character "#" are skipped.
+
+```xml
+<processor name="important_clients" type="RangeFile">
+  <description>Read address ranges from text file</description>
+  <options>
+    <option key="filename" value="c:\F2B\important_clients.ranges"/>
+  </options>
+  <goto success="last"/>
+</processor>
+```
+
+##### Input
+
+Filter log events according list of input types, input names and selector
+names. Regexp can be used to match each name. This processor can be used
+to group similar events and apply to them same processor chain.
+
+```xml
+<processor name="login_input" type="Input">
+  <description>Select just login events from all local and remote inputs</description>
+  <options>
+    <!-- <option key="type" value="(EventLog|FileLog)"/> -->
+    <option key="input" value="(local.*|remote.*)"/>
+    <option key="selector" value="(login|specific_login)"/>
+  </options>
+  <goto success="if_filter_login_succeeded" failure="if_filter_login_failed"/>
+</processor>
+```
+
+##### Account
+
+Filter log events according user account properties. This processor requires
+existing `<account>` definition that provides user account data. Account
+processor can be used to deal with non-existing, locked or disabled accounts
+different with respect to normal failed login due to bad password.
+
+```xml
+<processor name="if_ad_account_exists" type="Account">
+  <description>Filter log events for non-existing accounts</description>
+  <options>
+    <!-- data "source" is reference to existing "account" name -->
+    <option key="account" value="ad_accounts"/>
+    <option key="mode" value="exists"/>
+    <!--
+    <option key="mode" value="disabled"/>
+    <option key="mode" value="locked"/>
+    <option key="mode" value="disabled|locked"/>
+    -->
+  </options>
+  <goto success="ad_account_exists" failure="not_ad_account_exists" error="ad_account_error"/>
+</processor>
+```
+
+#### Case
+
+Use template to create next processor name. If the label after template
+variable expansion doesn't correspond to any existing processor name than
+standard `failure` processor will be called as next processor. If you leave
+`failure` attribute empty than log event processing will follow standard
+rules and no furter processor is called.
+
+```xml
+<processor name="case" type="Case">
+  <description>Choose next processor according template</description>
+  <options>
+    <option key="template" value="label_for_${Event.Input}_${Event.Selector}"/>
+  </options>
+  <goto failure="last"/>
+</processor>
+```
+
+#### Logger
+
+Log selected events in a file (timestamp, hostname, selector_name, IP address,
+...). Output data format is treated as template where all variables are
+expanded and than stored in predefined file. To prevent excessive disk space
+usage this module can rotate its output files when their size reached given
+treshold. It is also possible to keep history of several rotated log files.
+
+```xml
+<processor name="logger" type="Logger">
+  <description>Log all selected events in log file</description>
+  <options>
+    <option key="file" value="c:\F2B\full.log"/>
+    <option key="size" value="1073741824"/>
+    <option key="rotate" value="4"/>
+    <option key="template" value="${Event.TimeCreated}\t${Event.EventId}\t${Event.RecordId}\t${Event.Address}\r\n"/>
+    <option key="synchronized" value="true"/>
+  </options>
+</processor>
+```
+
+#### LoggerSQL
+
+Log selected events in a SQL database using ODBC connection string and column
+to F2B processor variable name map.
+
+```sql
+CREATE TABLE `f2b` (
+    `inserted` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    `timestamp` BIGINT DEFAULT NULL,
+    `hostname` VARCHAR(50) DEFAULT NULL,
+    `id` INTEGER DEFAULT NULL,
+    `input` VARCHAR(50) DEFAULT NULL,
+    `selector` VARCHAR(50) DEFAULT NULL,
+    `status` VARCHAR(10) DEFAULT NULL,
+    `event` INTEGER DEFAULT NULL,
+    `record` INTEGER DEFAULT NULL,
+    `machine` VARCHAR(50) DEFAULT NULL,
+    `created` BIGINT DEFAULT NULL,
+    `provider` VARCHAR(40) DEFAULT NULL,
+    `address` VARCHAR(40) DEFAULT NULL,
+    `port` SMALLINT DEFAULT NULL,
+    `username` VARCHAR(25) DEFAULT NULL,
+    `domain` VARCHAR(20) DEFAULT NULL
+);
+```
+
+```xml
+<processor name="logger_sql" type="LoggerSQL">
+  <description>Log all selected events in MySQL database using ODBC</description>
+  <options>
+    <option key="odbc" value="DRIVER={MySQL ODBC 3.51 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
+    <option key="table" value="f2b"/>
+    <option key="columns" value="id,timestamp,hostname,input,selector,status,event,record,machine,created,provider,address,port,username,domain"/>
+    <option key="column.timestamp" value="${Event.Timestamp}"/>
+    <option key="column.hostname" value="${Event.Hostname}"/>
+    <option key="column.id" value="${Event.Id}"/>
+    <option key="column.input" value="${Event.Input}"/>
+    <option key="column.selector" value="${Event.Selector}"/>
+    <option key="column.status" value="${Event.Status}"/>
+    <option key="column.event" value="${Event.EventId}"/>
+    <option key="column.record" value="${Event.RecordId}"/>
+    <option key="column.machine" value="${Event.MachineName}"/>
+    <option key="column.created" value="${Event.TimeCreated}"/>
+    <option key="column.provider" value="${Event.ProviderName}"/>
+    <option key="column.address" value="${Event.Address}"/>
+    <option key="column.port" value="${Event.Port}"/>
+    <option key="column.username" value="${Event.Username}"/>
+    <option key="column.domain" value="${Event.Domain}"/>
+  </options>
+</processor>
+```
+
+#### Fail2ban
+
+Provides fail to ban functionality.
+
+```xml
+<processor name="fail2ban" type="Fail2ban">
+  <description>Test fail2ban processor</description>
+  <options>
+    <option key="state" value="c:\F2B\fail2ban.state"/>
+    <option key="findtime" value="600"/>
+    <option key="ipv4_prefix" value="32"/>
+    <option key="ipv6_prefix" value="64"/>
+    <option key="history" value="all"/>
+    <!--
+    <option key="history" value="all"/>
+    <option key="history" value="one"/>
+    <option key="history" value="fixed"/>
+    <option key="history.fixed.count" value="10"/>
+    <option key="history.fixed.decay" value="1.0"/>
+    <option key="history" value="rrd"/>
+    <option key="history.rrd.count" value="5"/>
+    <option key="history.rrd.repeat" value="2"/>
+    -->
+    <option key="tresholds" value="test,soft,hard"/>
+    <option key="treshold.test.function" value="simple"/>
+    <option key="treshold.test.maxretry" value="0"/>
+    <option key="treshold.test.repeat" value="0"/>
+    <option key="treshold.test.bantime" value="300"/>
+    <option key="treshold.test.action" value="action_test"/>
+    <option key="treshold.soft.function" value="simple"/>
+    <option key="treshold.soft.maxretry" value="7"/>
+    <option key="treshold.soft.repeat" value="0"/>
+    <option key="treshold.soft.bantime" value="-1"/>
+    <option key="treshold.soft.action" value="action_soft"/>
+    <option key="treshold.hard.function" value="simple"/>
+    <option key="treshold.hard.maxretry" value="10"/>
+    <option key="treshold.hard.repeat" value="0"/>
+    <option key="treshold.hard.bantime" value="600"/>
+    <option key="treshold.hard.action" value="action_hard"/>
+    <!-- this should go to default filewall configuration options
+    <option key="maxentries" value="100000"/>
+    -->
+  </options>
+</processor>
+```
+
+#### Mail
+
+Send email created from predefined template
+
+```xml
+<processor name="action_mail" type="Mail">
+  <options>
+    <option key="sender" value="helpdesk@example.com"/>
+    <option key="recipient" value="f2b-admin@example.com,${address_group.Mail}"/>
+    <option key="subject" value="[F2B] Fail2Ban[${Fail2ban.Last}] reached ${${Fail2ban.Last}.Treshold} treshold for ${${Fail2ban.Last}.Address}/${${Fail2ban.Last}.Prefix}"/>
+    <option key="body" value="Mail body text."/>
+  </options>
+  <goto on_error_next="true"/>
+</processor>
+```
+
 #### Other configurations
 
 ##### Queue
@@ -455,13 +786,15 @@ sc start F2BLA
 
  * log analyzer machine
  ```
-c:\F2B\F2BLogAnalyzer.exe install -g c:\F2B\F2BLogAnalyzer.log -l ERROR \
+c:\F2B\F2BLogAnalyzer.exe install \
+        -g c:\F2B\F2BLogAnalyzer.log -l ERROR \
         -c c:\F2B\F2BLogAnalyzer.exe.config
 sc start F2BLA
 ```
  * message queue machine (queuehost)
  ```
-c:\F2B\F2BQueue.exe install -g c:\F2B\F2BLogAnalyzer.log -l ERROR \
+c:\F2B\F2BQueue.exe install \
+        -g c:\F2B\F2BLogAnalyzer.log -l ERROR \
         -H . -p F2BProducer -r F2BSubscription \
         -s c:\F2B\queue.dat -i 300 -n 150
 sc start F2BQ
@@ -469,7 +802,8 @@ sc start F2BQ
  * machine protected by Fail2ban firewall
  ```
 c:\F2B\F2BFirewall.exe add-wfp
-c:\F2B\F2BFirewall.exe install -g c:\F2B\F2BLogAnalyzer.log -l ERROR \
+c:\F2B\F2BFirewall.exe install \
+        -g c:\F2B\F2BLogAnalyzer.log -l ERROR \
         -H queuehost -r F2BSubscription -i 240 -n 150
 sc start F2BFW
 ```
@@ -488,11 +822,12 @@ but such operation should not happen very often and almost 10k filter
 rules can be added/deleted within a second.
 
 Reasonable performance was also behind decision to use WFP API,
-because common interfaces like `netsh` use `FirewallAPI.dll` and
-filter rules are inserted in application firewall layer. This
-library has sufficient performance for manipulation with few
-thousands filter rules, but it can cause issues once you reach
-10k rules. `F2BWFP.dll` use IPv4/IPv6 firewall layer which simple
-and operation like add/modify/delete filter rules are much cheaper.
-It is possible to change 100k rules within 15 seconds where
-`FirewallAPI.dll` needs more than 40 minutes to do same changes.
+because common interfaces like `netsh` use `FirewallAPI.dll` and filter
+rules are inserted in application firewall layer. This library has
+sufficient performance for manipulation with few thousands filter rules,
+but it can cause issues once you reach 10k rules. WFP provides different
+firewall layers and `FirewallAPI.dll` use complex application layer.
+It is more efficient to use just IPv4/IPv6 packet layer to block remote
+addresses, because add/remove operations are much faster. It is possible
+to change 100k fail2ban rules within 15 seconds where `FirewallAPI.dll`
+needs more than 40 minutes to do same changes.

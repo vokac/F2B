@@ -307,8 +307,7 @@
           <option key="file" value="c:\F2B\full.log"/>
           <option key="size" value="1073741824"/>
           <option key="rotate" value="4"/>
-          <option key="template" value="${Event.Timestamp}	${Event.TimeCreated}	${Event.Hostname}	${Event.Id}	${Event.Input}	${Event.Selector}	${Event.Status}	${Event.MachineName}	${Event.EventId}	${Event.RecordId}	${Event.Address}	${Event.Port}	${Event.Username}	${Event.Domain}
-"/>
+          <option key="template" value="${Event.Timestamp}\t${Event.TimeCreated}\t${Event.Hostname}\t${Event.Id}\t${Event.Input}\t${Event.Selector}\t${Event.Status}\t${Event.MachineName}\t${Event.EventId}\t${Event.RecordId}\t${Event.Address}\t${Event.Port}\t${Event.Username}\t${Event.Domain}\r\n"/>
           <option key="synchronized" value="true"/>
         </options>
       </processor>
@@ -384,6 +383,7 @@
           <range network="2001:db8::/32"/>
         </ranges>
         <options>
+          <!-- create ${whitelist.Mail} variable on successful search -->
           <option key="mail" value="whitelist-admin@example.com"/>
         </options>
         <!-- apply this processor to matched log events and jump to last processor -->
@@ -578,8 +578,7 @@ Event:
           <option key="file" value="c:\F2B\fail2ban.log"/>
           <option key="size" value="1073741824"/>
           <option key="rotate" value="4"/>
-          <option key="template" value="${Event.Timestamp}	${Event.TimeCreated}	${Event.Hostname}	${Event.Id}	${Fail2ban.Last}	${${Fail2ban.Last}.Treshold}	${${Fail2ban.Last}.Address}	${${Fail2ban.Last}.Prefix}
-"/>
+          <option key="template" value="${Event.Timestamp}	${Event.TimeCreated}	${Event.Hostname}	${Event.Id}	${Fail2ban.Last}	${${Fail2ban.Last}.Treshold}	${${Fail2ban.Last}.Address}	${${Fail2ban.Last}.Prefix}\r\n"/>
           <option key="synchronized" value="true"/>
         </options>
         <goto on_error_next="true"/>
