@@ -58,6 +58,222 @@ namespace F2B
     }
 
 
+
+    public class SimpleExpression
+    {
+        public enum EvaluateTokenType
+        {
+            Number = 0x01,
+            Unary = 0x02,
+            Binary = 0x04,
+            End = 0x08,
+        }
+
+        public static double Evaluate(string expr)
+        {
+            List<string> ops = new List<string>();
+            List<double> vals = new List<double>();
+            EvaluateTokenType allowed = EvaluateTokenType.Number | EvaluateTokenType.Unary;
+
+            // normalize input expression
+            expr = expr.ToLower();
+            expr = expr.Replace(" ", "");
+            expr = expr.Replace("true", "1");
+            expr = expr.Replace("false", "0");
+
+            for (int pos = 0; pos < expr.Length;)
+            {
+                string s1 = expr.Substring(pos, 1);
+                string s2 = "\0\0";
+                string s3 = "\0\0\0";
+                string s4 = "\0\0\0\0";
+                string s5 = "\0\0\0\0\0";
+
+                if (pos < expr.Length - 1) s2 = expr.Substring(pos, 2);
+                if (pos < expr.Length - 2) s3 = expr.Substring(pos, 3);
+                if (pos < expr.Length - 3) s4 = expr.Substring(pos, 4);
+                if (pos < expr.Length - 4) s5 = expr.Substring(pos, 5);
+
+                if (s1.Equals("(") || s4.Equals("int(") || s5.Equals("bool("))
+                {
+                    if (!allowed.HasFlag(EvaluateTokenType.Number))
+                    {
+                        throw new ArgumentException("Invalid token type \"" + expr + "\"[" + pos + "]");
+                    }
+
+                    if (s1.Equals("(")) pos += 1;
+                    else if (s4.Equals("int(")) pos += 4;
+                    else if (s5.Equals("bool(")) pos += 5;
+
+                    // recursively call Evaluate
+                    int start = pos;
+                    int bracketCount = 0;
+                    for (; pos < expr.Length; pos++)
+                    {
+                        string s = expr.Substring(pos, 1);
+
+                        if (s.Equals("("))
+                        {
+                            bracketCount++;
+                        }
+                        else if (s.Equals(")"))
+                        {
+                            if (bracketCount == 0)
+                                break;
+
+                            bracketCount--;
+                        }
+                    }
+
+                    if (!(pos < expr.Length))
+                    {
+                        throw new ArgumentException("Invalid expression \"" + expr + "\"");
+                    }
+
+                    double val = Evaluate(expr.Substring(start, pos - start));
+
+                    if (s1.Equals("(")) vals.Add(val);
+                    else if (s4.Equals("int(")) vals.Add(((long)val));
+                    else if (s5.Equals("bool(")) vals.Add(val == 0 ? 0 : 1);
+
+                    pos += 1; // ")"
+
+                    allowed = EvaluateTokenType.Binary | EvaluateTokenType.End;
+                }
+                else if (s2.Equals("==") || s2.Equals("!=")
+                    || s2.Equals("<=") || s2.Equals(">=")
+                    || s2.Equals("&&") || s2.Equals("||"))
+                {
+                    if (!allowed.HasFlag(EvaluateTokenType.Binary))
+                    {
+                        throw new ArgumentException("Invalid token type \"" + expr + "\"[" + pos + "]");
+                    }
+
+                    ops.Add(s2);
+                    pos += 2;
+
+                    allowed = EvaluateTokenType.Number | EvaluateTokenType.Unary;
+                }
+                else if (s1.Equals("+") || s1.Equals("-") || s1.Equals("*") || s1.Equals("/")
+                    || s1.Equals("%") || s1.Equals(">") || s1.Equals("<")
+                    || s1.Equals("&") || s1.Equals("^") || s1.Equals("|"))
+                {
+                    if (!allowed.HasFlag(EvaluateTokenType.Binary))
+                    {
+                        throw new ArgumentException("Invalid token type \"" + expr + "\"[" + pos + "]");
+                    }
+
+                    ops.Add(s1);
+                    pos += 1;
+
+                    allowed = EvaluateTokenType.Number | EvaluateTokenType.Unary;
+                }
+                else if (s1.Equals("!"))
+                {
+                    if (!allowed.HasFlag(EvaluateTokenType.Unary))
+                    {
+                        throw new ArgumentException("Invalid token type \"" + expr + "\"[" + pos + "]");
+                    }
+
+                    ops.Add(s1);
+                    pos += 1;
+
+                    allowed = EvaluateTokenType.Number;
+                }
+                else if (char.IsDigit(expr[pos]))
+                {
+                    if (!allowed.HasFlag(EvaluateTokenType.Number))
+                    {
+                        throw new ArgumentException("Invalid token type \"" + expr + "\"[" + pos + "]");
+                    }
+
+                    int start = pos;
+                    while (pos < expr.Length && (char.IsDigit(expr, pos) || expr.Substring(pos, 1).Equals("."))) pos++;
+                    vals.Add(double.Parse(expr.Substring(start, pos - start)));
+
+                    allowed = EvaluateTokenType.Binary | EvaluateTokenType.End;
+                }
+                else
+                {
+                    throw new ArgumentException("Invalid character \"" + expr + "\"[" + pos + "]: s1=" + s1 + "s2=" + s2);
+                }
+            }
+
+            if (!allowed.HasFlag(EvaluateTokenType.End))
+            {
+                throw new ArgumentException("Invalid token type \"" + expr + "\": non-terminating token at the end");
+            }
+
+            string[] operation_precedence = new string[] {
+                "!", "*", "/", "%", "+", "-",
+                "<", ">", "<=", ">=", "==", "!=",
+                "&", "^", "|", "&&", "||"
+            };
+
+            foreach (string cop in operation_precedence)
+            {
+                int vpos = 0;
+                foreach (string op in ops)
+                {
+                    if (!cop.Equals(op))
+                    {
+                        vpos++;
+                        continue;
+                    }
+
+                    if (op.Equals("!"))
+                        vals[vpos] = vals[vpos] == 0 ? 1 : 0;
+                    else if (op.Equals("*"))
+                        vals[vpos] *= vals[vpos + 1];
+                    else if (op.Equals("/"))
+                        vals[vpos] /= vals[vpos + 1];
+                    else if (op.Equals("%"))
+                        vals[vpos] = ((long)vals[vpos]) % ((long)vals[vpos + 1]);
+                    else if (op.Equals("+"))
+                        vals[vpos] += vals[vpos + 1];
+                    else if (op.Equals("-"))
+                        vals[vpos] -= vals[vpos + 1];
+                    else if (op.Equals("<"))
+                        vals[vpos] = vals[vpos] < vals[vpos + 1] ? 1 : 0;
+                    else if (op.Equals(">"))
+                        vals[vpos] = vals[vpos] > vals[vpos + 1] ? 1 : 0;
+                    else if (op.Equals("<="))
+                        vals[vpos] = vals[vpos] <= vals[vpos + 1] ? 1 : 0;
+                    else if (op.Equals(">="))
+                        vals[vpos] = vals[vpos] >= vals[vpos + 1] ? 1 : 0;
+                    else if (op.Equals("=="))
+                        vals[vpos] = vals[vpos] == vals[vpos + 1] ? 1 : 0;
+                    else if (op.Equals("!="))
+                        vals[vpos] = vals[vpos] != vals[vpos + 1] ? 1 : 0;
+                    else if (op.Equals("&"))
+                        vals[vpos] = ((long)vals[vpos]) & ((long)vals[vpos + 1]);
+                    else if (op.Equals("^"))
+                        vals[vpos] = ((long)vals[vpos]) ^ ((long)vals[vpos + 1]);
+                    else if (op.Equals("|"))
+                        vals[vpos] = ((long)vals[vpos]) | ((long)vals[vpos + 1]);
+                    else if (op.Equals("&&"))
+                        vals[vpos] = vals[vpos] != 0 && vals[vpos + 1] != 0 ? 1 : 0;
+                    else if (op.Equals("||"))
+                        vals[vpos] = vals[vpos] != 0 || vals[vpos + 1] != 0 ? 1 : 0;
+
+                    // binary operators
+                    if (!op.Equals("!"))
+                        vals.RemoveAt(vpos + 1);
+                }
+                ops.RemoveAll(op => op.Equals(cop));
+            }
+
+            if (vals.Count != 1)
+            {
+                throw new ArgumentException("Invalid expression \"" + expr + "\": extra arguments");
+            }
+
+            return vals[0];
+        }
+    }
+
+
+
     class ProcessorEventStringTemplate
     {
         private IDictionary<string, string> repl;
@@ -130,7 +346,7 @@ namespace F2B
             }
         }
 
-        public string ExpandTemplateVariables(string str, string empty = null)
+        public string ExpandTemplateVariables(string str)
         {
             StringBuilder output = new StringBuilder();
 
@@ -185,7 +401,7 @@ namespace F2B
                     // expand variable
                     if (subvar)
                     {
-                        key = ExpandTemplateVariables(line.Substring(start, end - start), empty);
+                        key = ExpandTemplateVariables(line.Substring(start, end - start));
                     }
                     else
                     {
@@ -210,10 +426,6 @@ namespace F2B
                     {
                         output.Append(defval);
                     }
-                    else if (empty != null)
-                    {
-                        output.Append(empty);
-                    }
                     else
                     {
                         output.Append("${");
@@ -225,15 +437,120 @@ namespace F2B
                 output.Append(Environment.NewLine);
             }
 
-            return Escape(output.ToString(0, output.Length - Environment.NewLine.Length));
+            return output.ToString(0, output.Length - Environment.NewLine.Length);
         }
 
-        public static string Escape(string s)
+        public string EvalTemplateExpressions(string str)
         {
-            return escapeRegex.Replace(s, EscapeMatchEval);
+            StringBuilder output = new StringBuilder();
+
+            // parse template line by line (report syntax error
+            // in case of unmatched variable parenthesis)
+            int pos;
+            int start, end, par;
+            bool subvar;
+            string key;
+            foreach (string line in str.Replace(Environment.NewLine, "\n").Split('\n'))
+            {
+                pos = 0;
+                while (true)
+                {
+                    // try to find beginning of variable definition "$("
+                    start = pos;
+                    while (start < line.Length - 1 && (!(line[start] == '$' && line[start + 1] == '(') || (start > 0 && line[start - 1] == '\\'))) start++;
+                    if (!(start < line.Length - 1))
+                    {
+                        output.Append(line.Substring(pos));
+                        break;
+                    }
+                    output.Append(line.Substring(pos, start - pos));
+                    pos = start;
+                    start += 2;
+
+                    // try to find end of variable definiton ")"
+                    par = 0;
+                    subvar = false;
+                    end = start;
+                    while (end < line.Length && (par > 0 || line[end] != ')'))
+                    {
+                        if (end < line.Length - 1 && line[end - 1] != '\\' && line[end] == '$' && line[end + 1] == '(')
+                        {
+                            subvar = true;
+                        }
+
+                        if (line[end] == '(') par++;
+                        else if (line[end] == ')') par--;
+
+                        end++;
+                    }
+                    if (!(end < line.Length))
+                    {
+                        Log.Warn("Unable to parse all variables in template line: " + line);
+                        output.Append(line.Substring(pos));
+                        break;
+                    }
+                    pos = end + 1;
+
+                    // expand variable
+                    if (subvar)
+                    {
+                        key = EvalTemplateExpressions(line.Substring(start, end - start));
+                    }
+                    else
+                    {
+                        key = line.Substring(start, end - start);
+                    }
+
+                    // parse default value from key
+                    string defval = null;
+                    if (key.Contains(":="))
+                    {
+                        int seppos = key.IndexOf(":=");
+                        defval = key.Substring(seppos + 2);
+                        key = key.Substring(0, seppos);
+                    }
+
+                    // replace variable
+                    try
+                    {
+                        output.Append(SimpleExpression.Evaluate(key));
+                    }
+                    catch (Exception ex)
+                    {
+                        Log.Warn("Unable to evaluate expression \"" + key + "\": " + ex.Message);
+
+                        if (defval != null)
+                        {
+                            output.Append(defval);
+                        }
+                        else
+                        {
+                            output.Append("$(");
+                            output.Append(key);
+                            output.Append(")");
+                        }
+                    }
+                }
+
+                output.Append(Environment.NewLine);
+            }
+
+            return output.ToString(0, output.Length - Environment.NewLine.Length);
         }
 
-        private static string EscapeMatchEval(Match m)
+        public static string UnEscape(string s)
+        {
+            return escapeRegex.Replace(s, UnEscapeMatchEval);
+        }
+
+        public string Apply(string str)
+        {
+            string tmp = ExpandTemplateVariables(str);
+            tmp = EvalTemplateExpressions(tmp);
+            return UnEscape(tmp);
+        }
+
+        private static string UnEscapeMatchEval(Match m)
         {
             if (escapeMapping.ContainsKey(m.Value))
             {

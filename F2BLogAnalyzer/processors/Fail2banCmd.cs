@@ -41,7 +41,7 @@ namespace F2B.processors
             System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
             startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
             startInfo.FileName = path;
-            startInfo.Arguments = tpl.ExpandTemplateVariables(args);
+            startInfo.Arguments = tpl.Apply(args);
             startInfo.UseShellExecute = false;
             //startInfo.EnvironmentVariables.Add("F2B_ADDRESS", address);
             //startInfo.EnvironmentVariables.Add("F2B_EXPIRATION", expiration.ToString());

@@ -86,14 +86,14 @@ namespace F2B.processors
             F2BSection config = F2B.Config.Instance;
             ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
 
-            string senderEx = tpl.ExpandTemplateVariables(sender, "");
-            string recipientEx = Regex.Replace(tpl.ExpandTemplateVariables(recipient, ""), @"^[ ,]*(.*?)[ ,]*$", "$1");
-            string subjectEx = tpl.ExpandTemplateVariables(subject);
+            string senderEx = tpl.Apply(sender);
+            string recipientEx = Regex.Replace(tpl.Apply(recipient), @"^[ ,]*(.*?)[ ,]*$", "$1");
+            string subjectEx = tpl.Apply(subject);
             Log.Info("Sending mail notification (from=" + senderEx + ",to=" + recipientEx + ",subject=" + subjectEx + ")");
 
             MailMessage mail = new MailMessage(senderEx, recipientEx);
             mail.Subject = subjectEx;
-            mail.Body = tpl.ExpandTemplateVariables(body);
+            mail.Body = tpl.Apply(body);
 
             SmtpClient client = new SmtpClient();
             client.Port = config.Smtp.Port.Value;

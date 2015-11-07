@@ -106,7 +106,7 @@ namespace F2B.processors
             {
                 foreach (var item in columns)
                 {
-                    cmd.Parameters.Add(new OdbcParameter(item.Item1, tpl.ExpandTemplateVariables(item.Item2)));
+                    cmd.Parameters.Add(new OdbcParameter(item.Item1, tpl.Apply(item.Item2)));
                 }
 
                 cmd.ExecuteNonQuery();

@@ -142,7 +142,7 @@ namespace F2B.processors
                 }
 
                 ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
-                string data = tpl.ExpandTemplateVariables(template);
+                string data = tpl.Apply(template);
                 sw.Write(data);
                 
                 if (synchronized)

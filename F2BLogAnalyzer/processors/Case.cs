@@ -42,7 +42,7 @@ namespace F2B.processors
 
             ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
 
-            string label = tpl.ExpandTemplateVariables(template);
+            string label = tpl.Apply(template);
             if (service.HasProcessor(label))
             {
                 return label;
