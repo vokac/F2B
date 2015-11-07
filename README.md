@@ -129,13 +129,18 @@ login failures. You can at least disable old and insecure NTLM methods:
         * Local Policies
           * Security Options
   ```
-  Network security: Restrict NTLM: Incoming NTLM traffic -- Deny all accounts
+  Network security: LAN Manager authentication level -- Send NTLMv2 response only. Refuse LM & NTLM
   ```
-  ~~Network security: LAN Manager authentication level -- Send NTLMv2 response only. Refuse LM & NTLM~~
   ~~Network security: Restrict NTLM: Audit Incoming NTLM Traffic -- Enable auditing for all accounts~~
+  ~~Network security: Restrict NTLM: Incoming NTLM traffic -- Deny all accounts~~
 
-Windows event log data can be browsed with `Eventvwr.msc` GUI
-or powershell eventlog API can be used to display data in plain text
+Windows event log data can be browsed with `Eventvwr.msc` GUI, `wevtutil`
+or `powershell` eventlog API
+
+```
+wevtutil gp microsoft-windows-security-kerberos /ge /gm
+wevtutil qe Security /q:"*[System[Provider[@Name='Microsoft-Windows-Security-Auditing'] and (EventID=4624)] and EventData[Data[@Name='LogonType']='2']]" /e:Events
+```
 
 ```powershell
 Get-EventLog -LogName Security
@@ -453,11 +458,7 @@ for your own address range).
 
 Filter log events according client address read from config file.
 The `filename` is monitored for changes and this module is automatically
-reconfigured with updated data. File format is very simple, each line
-contains IPv4/IPv6 address or address range. Optionally mail separated
-from IPv4/IPv6 address by tabulator can be provided and it is used to
-create `procname.Mail` variable that can be later used e.g. in `Mail`
-processor. Lines starting with hash character "#" are skipped.
+reconfigured with updated data.
 
 ```xml
 <processor name="important_clients" type="RangeFile">
@@ -467,6 +468,21 @@ processor. Lines starting with hash character "#" are skipped.
   </options>
   <goto success="last"/>
 </processor>
+```
+
+File format is very simple, each line contains IPv4/IPv6 address or address
+range. Optionally mail separated from IPv4/IPv6 address by tabulator can be
+provided and it is used to create `procname.Mail` variable that can be later
+used e.g. in `Mail` processor. Hash character "#" at the beginning of the
+line means start of comment and these lines are skipped when parsing data
+from this address ranges configuration file.
+
+```
+192.168.123.123
+192.168.0.0/16	f2b-private-range-admin@example.com
+192.168.1.0/24	f2b-private-subrange-admin@example.com
+fc00::1234:1233
+fc00::/7	f2b-private-range-admin@example.com
 ```
 
 ##### Input
@@ -748,6 +764,76 @@ This configuration is used by `Account` processor.
 ```
 
 ### Command line options
+
+There are couple of options common to every F2B executable. To see all
+available command line options with their description use `-h` option.
+Useful informations are showed aslo once you call executable with `examples`
+option (e.g. `F2BFirewall.exe examples`). This shows most common patterns
+how to use command line interface including short description.
+
+Every executable also supports options related to logging. If you run
+F2B executable interactively it sends by default log data to standard
+output and in service mode to the windows event log. You can save F2B
+logging in a flat file by specifying `-g filename` command line option.
+To change log level use `-l` command line option with `INFO`, `WARN`
+or `ERROR` parameter.
+
+Command line interface can be also used to manage F2B services that
+corresponds to `F2BLogAnalyzer.exe`, `F2BQeueu.exe` and `F2BFirewall.exe`.
+This applications support `install` (`uninstall`) option that is used
+to install (uninstall) particular windows service. It is also possible
+to start/stop corresponding windows service with `start` and `stop`
+commandline option. It is possible to manage services with standard
+windows tools like `sc.exe`, but especialy installing and uninstalling
+F2B services should be done with their own command line interface,
+because that ensures correct service options and also all necessery
+modifications (e.g. F2BFirewall configures also WFP during service
+installation).
+
+Before installing / starting F2B services it is useful to start executables
+interactively, because it is much faster to trace configuration issues
+this way. Interactive mode is initiated with `run` command line option.
+Be aware that F2B binaries may need special privileges (access to windows
+event log, access to WFP, ...) and by default they'll work only when
+executed with local administrator privileges. It is possible to run each
+F2B executable with normal user account, but in that case you must first
+add access rights to required user to windows event log and windows
+filtering platform.
+
+F2B binaries also support configuration of the memory limits enforced
+by windows. With `-x size` option you can control windows Job Object
+memory configuration. This can prevent memory exhaution in case of
+non-optimal configuration (e.g. IPv6 Fail2ban configuration can cause
+issues in case you use /128 prefix and attacker controls all 2^64
+addresses on one subnet).
+
+#### F2BLogAnalyzer (F2BLA service)
+
+Main configuration is stored in XML file that was already described
+in prior sections. Use `-c filename` command line option to select
+required configuration.
+
+Debug build of the F2BLogAnalyzer provides simple interface that can
+be used to dump internal state of this application includig current
+state of each configured processor. This is useful espetially for
+new module development but it can also help troubleshooting issues
+with configuration. When you run F2BLogAnalyzer interactively you can press
+"d" key to dump program state in `c:\F2B\dump.txt` (different file can be
+passed with `--dump-file filename` command line option). Special log event
+that can be created with `LogEvent.exe dump filename` also dumps internal
+F2BLogAnalyzer state in required filename.
+
+#### F2BQueue (F2BQ service)
+
+This executable doesn't use configuration file and its behavior is driven
+only by command line arguments. TODO
+
+#### F2BFirewall (F2BFW service)
+
+This executable doesn't use configuration file and its behavior is driven
+only by command line arguments. TODO
+
+#### Simple examples how to use F2B executables
 
 * Standalone I (F2B for one machine)
 
