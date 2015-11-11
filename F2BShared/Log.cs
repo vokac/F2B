@@ -46,6 +46,9 @@ namespace F2B
         #region Fields
         private static bool elogExists = false;
         private static StreamWriter writer = null;
+        private static int writer_rotate = 0;
+        private static long writer_size = 0;
+        private static long writer_size_curr = 0;
         private static object clock = new object();
         private static object flock = new object();
         #endregion
@@ -54,6 +57,14 @@ namespace F2B
         public static Destinations Dest { get; set; }
         public static EventLogEntryType Level { get; set; }
         public static string File { get; set; }
+        public static int FileRotate {
+            get { return writer_rotate; }
+            set { writer_rotate = value; }
+        }
+        public static long FileSize {
+            get { return writer_size; }
+            set { writer_size = value; }
+        }
         #endregion
 
         static Log()
@@ -154,14 +165,72 @@ namespace F2B
                     {
                         lock (flock)
                         {
+                            if (writer_size > 0)
+                            {
+                                // get current log file size
+                                if (writer_size_curr < 0)
+                                {
+                                    if (System.IO.File.Exists(Log.File))
+                                    {
+                                        FileInfo f = new FileInfo(Log.File);
+                                        writer_size_curr = f.Length;
+                                    }
+                                    else
+                                    {
+                                        writer_size_curr = 0;
+                                    }
+                                }
+
+                                if (writer_size_curr > writer_size)
+                                {
+                                    if (writer != null)
+                                    {
+                                        writer.Close();
+                                        writer = null;
+                                    }
+
+                                    if (writer_rotate > 0)
+                                    {
+                                        if (System.IO.File.Exists(Log.File + "." + writer_rotate))
+                                        {
+                                            System.IO.File.Delete(Log.File + "." + writer_rotate);
+                                        }
+                                        for (int i = writer_rotate; i > 1; i--)
+                                        {
+                                            if (System.IO.File.Exists(Log.File + "." + (i - 1)))
+                                            {
+                                                System.IO.File.Move(Log.File + "." + (i - 1), Log.File + "." + i);
+                                            }
+                                        }
+                                        if (System.IO.File.Exists(Log.File))
+                                        {
+                                            System.IO.File.Move(Log.File, Log.File + ".1");
+                                        }
+                                    }
+                                    else
+                                    {
+                                        if (System.IO.File.Exists(Log.File + ".bak"))
+                                        {
+                                            System.IO.File.Delete(Log.File + ".bak");
+                                        }
+                                        if (System.IO.File.Exists(Log.File))
+                                        {
+                                            System.IO.File.Move(Log.File, Log.File + ".bak");
+                                        }
+                                    }
+                                }
+                            }
+
                             if (writer == null)
                             {
-                                writer = new StreamWriter(
-                                    new FileStream(Log.File, FileMode.Append,
-                                        FileAccess.Write, FileShare.Read));
+                                writer = System.IO.File.AppendText(Log.File);
+                                writer_size_curr = 0;
                             }
+
                             writer.WriteLine(msg);
                             writer.Flush();
+
+                            writer_size_curr += msg.Length + Environment.NewLine.Length;
                         }
                     }
                     catch (Exception ex)

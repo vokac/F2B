@@ -113,7 +113,7 @@ namespace F2B.processors
                             {
                                 File.Delete(filename + "." + rotate);
                             }
-                            for (int i = rotate; i > 1; i++)
+                            for (int i = rotate; i > 1; i--)
                             {
                                 if (File.Exists(filename + "." + (i - 1)))
                                 {
@@ -138,6 +138,7 @@ namespace F2B.processors
                 if (sw == null)
                 {
                     sw = File.AppendText(filename);
+                    size_curr = 0;
                     nexceptions = 0;
                 }
 

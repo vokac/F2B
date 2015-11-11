@@ -50,7 +50,9 @@ namespace F2B
             Console.WriteLine("Options:");
             Console.WriteLine("  -h          show this help");
             Console.WriteLine("  -l          log severity level (INFO, WARN, ERROR)");
-            Console.WriteLine("  -g file     log file");
+            Console.WriteLine("  -g, --log-file file log filename (disables event log or console logging)");
+            Console.WriteLine("  --log-size size     maximum log file size");
+            Console.WriteLine("  --log-history cnt   number of rotated log files");
             Console.WriteLine("  -u user     use given user to run this service");
             Console.WriteLine("  -x size     configure hard limit for memory in MB (Job Object)");
             Console.WriteLine("  -H host     hostname with running F2BQueue (or F2BLogAnalyzer) service");
@@ -173,6 +175,22 @@ namespace F2B
                         i++;
                         Log.File = args[i];
                         Log.Dest = Log.Destinations.File;
+                    }
+                }
+                else if (param == "-log-size" || param == "--log-size")
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        i++;
+                        Log.FileSize = long.Parse(args[i]);
+                    }
+                }
+                else if (param == "-log-history" || param == "--log-history")
+                {
+                    if (i + 1 < args.Length)
+                    {
+                        i++;
+                        Log.FileRotate = int.Parse(args[i]);
                     }
                 }
                 else if (param == "-c" || param == "-config" || param == "--config")
