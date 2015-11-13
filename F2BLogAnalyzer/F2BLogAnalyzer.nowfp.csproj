@@ -4,11 +4,11 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{EA3E584F-EB31-40E0-8E13-6DCD2F7B05E8}</ProjectGuid>
+    <ProjectGuid>{DAEB10E7-DDC6-40E8-BA06-3339B278F1B2}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>F2B</RootNamespace>
-    <AssemblyName>F2BLogAnalyzer</AssemblyName>
+    <AssemblyName>F2BLogAnalyzer.nowfp</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -49,10 +49,6 @@
     <WarningLevel>4</WarningLevel>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="F2BWFP, Version=1.0.5757.18055, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Debug\F2BWFP.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Configuration.Install" />
@@ -83,7 +79,6 @@
     <Compile Include="processors\Fail2ban.cs" />
     <Compile Include="processors\Fail2banAction.cs" />
     <Compile Include="processors\Fail2banFw.cs" />
-    <Compile Include="processors\Fail2banWFP.cs" />
     <Compile Include="processors\Fail2banCmd.cs" />
     <Compile Include="processors\Fail2banMSMQ.cs" />
     <Compile Include="processors\Input.cs" />
@@ -107,9 +102,7 @@
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config">
-      <SubType>Designer</SubType>
-    </None>
+    <None Include="App.config" />
     <None Include="App.config.full" />
     <None Include="App.config.minimal" />
   </ItemGroup>
@@ -137,7 +130,6 @@
     </COMReference>
   </ItemGroup>
   <Import Project="..\F2BShared\F2BShared.projitems" Label="Shared" />
-  <Import Project="..\F2BSharedWFP\F2BSharedWFP.projitems" Label="Shared" />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it. 
        Other similar extension points exist, see Microsoft.Common.targets.

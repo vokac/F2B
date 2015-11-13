@@ -301,6 +301,9 @@
       <processor name="first" type="Label">
         <description>Label for first processor</description>
       </processor>
+      <processor name="event_data" type="EventData">
+        <description>Add all user data from windows event log record as ${EventData.*} variables</description>
+      </processor>
       <processor name="logger" type="Logger">
         <description>Log all selected events in log file</description>
         <options>
@@ -557,10 +560,10 @@ Login:
 
 Event:
   id: ${Event.Id}
-  recordid: ${Event.RecordId}
   timestamp: ${Event.Timestamp}
   created: ${Event.TimeCreated}
   hostname: ${Event.Hostname}
+  type: ${Event.Type}
   input: ${Event.Input}
   selector: ${Event.Selector}
   address: ${Event.Address}
@@ -568,6 +571,36 @@ Event:
   username: ${Event.Username}
   domain: ${Event.Domain}
   status: ${Event.Status}
+  event: ${Event.EventId}
+  machine: ${Event.MachineName}
+  recordid: ${Event.RecordId}
+  machine: ${Event.MachineName}
+  provider: ${Event.ProviderName}
+  process: ${Event.ProcessId}
+
+EventData:
+  SubjectUserSid: ${EventData.SubjectUserSid}
+  SubjectUserName: ${EventData.SubjectUserName}
+  SubjectDomainName: ${EventData.SubjectDomainName}
+  SubjectLogonId: ${EventData.SubjectLogonId}
+  TargetUserSid: ${EventData.TargetUserSid}
+  TargetUserName: ${EventData.TargetUserName}
+  TargetDomainName: ${EventData.TargetDomainName}
+  Status: ${EventData.Status}
+  FailureReason: ${EventData.FailureReason}
+  SubStatus: ${EventData.SubStatus}
+  LogonType: ${EventData.LogonType}
+  LogonProcessName: ${EventData.LogonProcessName}
+  AuthenticationPackageName: ${EventData.AuthenticationPackageName}
+  WorkstationName: ${EventData.WorkstationName}
+  TransmittedServices: ${EventData.TransmittedServices}
+  LmPackageName: ${EventData.LmPackageName}
+  KeyLength: ${EventData.KeyLength}
+  ProcessId: ${EventData.ProcessId}
+  ProcessName: ${EventData.ProcessName}
+  IpAddress: ${EventData.IpAddress}
+  IpPort: ${EventData.IpPort}
+
 
 Expressions:
   simple aritmetic:

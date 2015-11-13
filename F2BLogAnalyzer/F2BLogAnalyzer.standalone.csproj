@@ -4,7 +4,7 @@
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
     <Platform Condition=" '$(Platform)' == '' ">AnyCPU</Platform>
-    <ProjectGuid>{2D36B2A0-026D-42ED-88CD-D233A3354906}</ProjectGuid>
+    <ProjectGuid>{9DEE72CF-D681-4914-A0D0-338F2AB65810}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>F2B</RootNamespace>
@@ -74,6 +74,7 @@
     <Compile Include="processors\Base.cs" />
     <Compile Include="processors\Bool.cs" />
     <Compile Include="processors\Case.cs" />
+    <Compile Include="processors\EventData.cs" />
     <Compile Include="processors\Fail2ban.cs" />
     <Compile Include="processors\Fail2banAction.cs" />
     <Compile Include="processors\Fail2banFw.cs" />
@@ -99,9 +100,7 @@
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config">
-      <SubType>Designer</SubType>
-    </None>
+    <None Include="App.config" />
     <None Include="App.config.full" />
     <None Include="App.config.minimal" />
   </ItemGroup>
