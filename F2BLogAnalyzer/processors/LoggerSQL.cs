@@ -92,7 +92,7 @@ namespace F2B.processors
 
         public override void Stop()
         {
-            if (conn == null)
+            if (conn == null && conn.State != ConnectionState.Closed)
             {
                 conn.Close();
             }
@@ -101,6 +101,13 @@ namespace F2B.processors
 
         public override string Execute(EventEntry evtlog)
         {
+            // check/refresh database connection state (reconnect?)
+            if (conn.State != ConnectionState.Open)
+            {
+                conn.Close();
+                conn.Open();
+            }
+
             ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
             using (OdbcCommand cmd = new OdbcCommand(insert, conn))
             {
