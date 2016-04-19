@@ -232,9 +232,9 @@ namespace F2B {
 #endif
 
 		// Add new filtering rule
-		UInt64 Add(String^ name, IPAddress^ addr) { return Add(name, addr, 0, false, false); };
-		UInt64 Add(String^ name, IPAddress^ addr, UInt64 weight, bool permit, bool persistent) { return Add(name, addr, 128); };
-		UInt64 Add(String^ name, IPAddress^ addr, int prefix) { return Add(name, addr, prefix, 0, false); };
+		UInt64 Add(String^ name, IPAddress^ addr) { return Add(name, addr, 128, 0, false, false); };
+		UInt64 Add(String^ name, IPAddress^ addr, UInt64 weight, bool permit, bool persistent) { return Add(name, addr, 128, weight, false, false); };
+		UInt64 Add(String^ name, IPAddress^ addr, int prefix) { return Add(name, addr, prefix, 0, false, false); };
 		UInt64 Add(String^ name, IPAddress^ addr, int prefix, UInt64 weight, bool permit, bool persistent);
 		UInt64 Add(String^ name, IPAddress^ addrFirst, IPAddress^ addrLast) { return Add(name, addrFirst, addrLast, 0, false, false); };
 		UInt64 Add(String^ name, IPAddress^ addrFirst, IPAddress^ addrLast, UInt64 weight, bool permit, bool persistent);
