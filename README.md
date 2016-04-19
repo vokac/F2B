@@ -145,8 +145,8 @@ wevtutil qe Security /q:"*[System[Provider[@Name='Microsoft-Windows-Security-Aud
 ```powershell
 Get-EventLog -LogName Security
         | Where-Object { $_.EventID -match "^(680|528|672|4768|4776)$" `
-		      –AND $_.UserName -notmatch 'SYSTEM|NETWORK SERVICE|LOCAL SERVICE|ANONYMOUS LOGON' `
-			  –AND $_.TimeGenerated -gt [datetime]::today } `
+		      â€“AND $_.UserName -notmatch 'SYSTEM|NETWORK SERVICE|LOCAL SERVICE|ANONYMOUS LOGON' `
+			  â€“AND $_.TimeGenerated -gt [datetime]::today } `
         | Sort-Object -Property TimeGenerated `
 		| Select-Object -Last 100 `
 		| Format-Table -AutoSize -Wrap
@@ -670,11 +670,103 @@ Send email created from predefined template
 
 ```xml
 <processor name="action_mail" type="Mail">
+  <description>Test email sender processor</description>
   <options>
     <option key="sender" value="helpdesk@example.com"/>
     <option key="recipient" value="f2b-admin@example.com,${address_group.Mail}"/>
     <option key="subject" value="[F2B] Fail2Ban[${Fail2ban.Last}] reached ${${Fail2ban.Last}.Treshold} treshold for ${${Fail2ban.Last}.Address}/${${Fail2ban.Last}.Prefix}"/>
     <option key="body" value="Mail body text."/>
+  </options>
+  <goto on_error_next="true"/>
+</processor>
+```
+
+#### Fail2banAction
+
+Base class for `Fail2ban*` action processors that provides general
+configuration option:
+* `bantime` - default expiration time for F2B firewall rule that is
+  used only if `Fail2ban` module doesn't provide its recommended value
+* `max_ignore` - maximum time we ignore events with request to block
+  same address
+
+##### Fail2banMSMQ
+
+Send information about banned IP address into F2BQueue that use MSMQ
+to implement producer-subscriber queue. This can be used to implement
+distributed F2B with many sources (F2BLogAnalyzers) and protected machines
+that receives information about addresses that would be added in firewall
+(F2BFirewall). Configuration options (queue_name) must correspond command
+line arguments used to start F2BQueue.
+
+```xml
+<processor name="action_hard_msmq" type="Fail2banMSMQ">
+  <description>Send message to F2BPS service using MSMQ</description>
+  <options>
+    <option key="queue_name" value=".\private$\F2BProductionQueue"/>
+    <option key="max_ignore" value="60"/> <!-- maximum time in seconds we ignore message with same parameters (minimum is real bantime/100) -->
+    <option key="bantime" value="600"/> <!-- used only if Fail2ban module doesn't provide specific value -->
+    <option key="time_to_be_received" value="300"/> <!-- how long should message wait to be processed in MSMQ before we discard it -->
+  </options>
+  <goto on_error_next="true"/>
+</processor>
+```
+
+##### Fail2banWFP
+
+Module that can be used to add new rules into local firewall using directly WFP
+API (F2BWFP.dll). This module also automatically cleanup expired F2B firewall
+rules. This is recommended module in case you don't want to build distributed
+F2B infrastructure (using F2BQueue + F2BFirewall) and it provides excelent
+performance for milions firewall rules.
+
+```xml
+<processor name="action_hard_wfp" type="Fail2banWFP">
+  <description>Ban IP address reaching fail2ban treshold with local firewall using WFP API (F2BWFP.dll)</description>
+  <options>
+  <option key="max_ignore" value="60"/> <!-- maximum time in seconds we ignore message with same parameters (minimum is real bantime/100) -->
+    <option key="bantime" value="600"/> <!-- used only if Fail2ban module doesn't provide specific value -->
+    <option key="cleanup" value="60"/> <!-- clean list of expired rules every cleanup seconds -->
+    <option key="max_filter_rules" value="600"/> <!-- maximum number of active F2B filter rules -->
+  </options>
+  <goto on_error_next="true"/>
+</processor>
+```
+
+##### Fail2banFw
+
+Module that can be used to add new rules into local firewall using standard
+COM Firewall API (FirewallAPI.dll). This module also automatically cleanup
+expired F2B firewall rules. Use this module with caution because its perfromance
+gets unusable with few tousands active firewall rule (packet processing is fine
+but add/remove firewall rule can take excessive time).
+
+```xml
+<processor name="action_hard_fw" type="Fail2banFw">
+  <description>Ban IP address reaching fail2ban treshold with local firewall using COM Firewall API (FirewallAPI.dll) ... much slower than WFP</description>
+  <options>
+    <option key="max_ignore" value="60"/> <!-- maximum time in seconds we ignore message with same parameters (minimum is real bantime/100) -->
+    <option key="bantime" value="600"/> <!-- used only if Fail2ban module doesn't provide specific value -->
+    <option key="cleanup" value="60"/> <!-- clean list of expired rules every cleanup seconds -->
+    <option key="max_filter_rules" value="600"/> <!-- maximum number of active F2B filter rules -->
+  </options>
+  <goto on_error_next="true"/>
+</processor>
+```
+
+##### Fail2banCmd
+
+This module execute external application and can pass argumens that comes
+from evaluated string expression
+
+```xml
+<processor name="action_test_cmd" type="Fail2banCmd">
+  <description>Execute F2BFirewall.exe to add local WFP filter (this module can be used to run arbitrary executable / script)</description>
+  <options>
+    <option key="path" value="c:\F2B\F2BFirewall.exe"/> <!-- path to F2BFirewall.exe executable -->
+    <option key="args" value="add-filter /address ${${Fail2ban.Last}.Address}/${${Fail2ban.Last}.Prefix} /expiration ${${Fail2ban.Last}.Expiration}"/> <!-- executable arguments -->
+    <option key="max_ignore" value="60"/> <!-- maximum time in seconds we ignore message with same parameters (minimum is real bantime/100) -->
+    <option key="bantime" value="600"/> <!-- used only if Fail2ban module doesn't provide specific value -->
   </options>
   <goto on_error_next="true"/>
 </processor>
