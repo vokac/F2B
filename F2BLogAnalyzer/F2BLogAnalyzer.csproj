@@ -95,6 +95,7 @@
     <Compile Include="processors\Parallel.cs" />
     <Compile Include="processors\Range.cs" />
     <Compile Include="processors\RangeFile.cs" />
+    <Compile Include="processors\Sleep.cs" />
     <Compile Include="processors\Stop.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="ProjectInstaller.cs">

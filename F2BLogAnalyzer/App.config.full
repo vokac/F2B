@@ -288,6 +288,7 @@
         Case ....... use template to create next processor name
                      e.g. label_for_${Event.Input}_${Event.Selector}
         Account .... filter log events according user account properties
+      Sleep ........ stop worker thread for given interval (for debugging)
       Logger ....... log selected events in a file (timestamp, hostname, selector_name, IP address, ...)
       LoggerSQL .... log selected events in SQL database using ODBC driver (configure auto-reconnect)
       Fail2ban ..... provides fail to ban
@@ -303,6 +304,13 @@
       </processor>
       <processor name="event_data" type="EventData">
         <description>Add all user data from windows event log record as ${EventData.*} variables</description>
+      </processor>
+      <processor name="sleep" type="Sleep">
+        <description>Processor for debuging / testing concurency</description>
+        <options>
+          <option key="mode" value="random"/>
+          <option key="pattern" value="10"/>
+        </options>
       </processor>
       <processor name="logger" type="Logger">
         <description>Log all selected events in log file</description>
