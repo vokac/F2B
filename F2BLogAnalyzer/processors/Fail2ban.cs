@@ -1053,7 +1053,7 @@ namespace F2B.processors
                 evtlog.SetProcData(Name + ".Treshold", treshold.Name);
 
                 // Add to "action" queue
-                Produce(new EventEntry(evtlog), treshold.Action);
+                Produce(new EventEntry(evtlog), treshold.Action, EventQueue.Priority.High);
             }
 
             return goto_next;

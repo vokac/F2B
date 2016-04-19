@@ -453,14 +453,16 @@
       </processor>
       <processor name="endif_ad_account_exists" type="Label"/>
 
-      <!--
       <processor name="parallel" type="Parallel">
         <description>Example configuration for Parallel processor</description>
         <options>
-          <option key="processors" value="processor1,processor2,processor3,fail2ban"/>
+          <option key="processors" value="processor1,processor2,processor3"/>
         </options>
+        <goto next="fail2ban"/>
       </processor>
-      -->
+      <processor name="processor1" type="Stop"/>
+      <processor name="processor2" type="Stop"/>
+      <processor name="processor3" type="Stop"/>
 
       <processor name="fail2ban" type="Fail2ban">
         <description>Test fail2ban processor</description>

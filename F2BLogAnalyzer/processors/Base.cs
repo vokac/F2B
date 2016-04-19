@@ -42,9 +42,9 @@ namespace F2B.processors
         #endregion
 
         #region Methods
-        protected void Produce(EventEntry item, string processor = null)
+        protected void Produce(EventEntry item, string processor = null, EventQueue.Priority priority = EventQueue.Priority.Medium)
         {
-            Service.Produce(item, processor, true);
+            Service.Produce(item, processor, priority);
         }
         public abstract string Execute(EventEntry evtlog);
         public virtual void Start() { }

@@ -4,6 +4,7 @@ using F2B.processors;
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Threading;
@@ -130,6 +131,8 @@ namespace F2B
 
     public class EventQueue
     {
+        public enum Priority { Low, Medium, High};
+
         #region Properties
         #endregion
 
@@ -137,7 +140,10 @@ namespace F2B
         private volatile bool started;
         private Thread thread;
         private CancellationTokenSource cancel;
-        private BlockingCollection<Tuple<EventEntry, string>> queue;
+        private BlockingCollection<Tuple<EventEntry, string>> queueLow;
+        private BlockingCollection<Tuple<EventEntry, string>> queueMedium;
+        private BlockingCollection<Tuple<EventEntry, string>> queueHigh;
+        private BlockingCollection<Tuple<EventEntry, string>>[] queue;
         private Dictionary<string, BaseProcessor> processors;
         private int limit;
         private int dropped;
@@ -160,7 +166,10 @@ namespace F2B
             max_errs = 5;
 
             cancel = new CancellationTokenSource();
-            queue = new BlockingCollection<Tuple<EventEntry, string>>();
+            queueLow = new BlockingCollection<Tuple<EventEntry, string>>();
+            queueMedium = new BlockingCollection<Tuple<EventEntry, string>>();
+            queueHigh = new BlockingCollection<Tuple<EventEntry, string>>();
+            queue = new[] { queueHigh, queueMedium, queueLow };
             processors = procs;
         }
         #endregion
@@ -199,9 +208,9 @@ namespace F2B
             cancel.Cancel(false);
         }
 
-        public void Produce(EventEntry item, string processor = null,  bool ignoreQueueSizeLimit = false)
+        public void Produce(EventEntry item, string processor = null, Priority priority = Priority.Low)
         {
-            if (!ignoreQueueSizeLimit && limit != 0 && queue.Count >= limit)
+            if (priority == Priority.Low && limit != 0 && queueLow.Count >= limit)
             {
                 // log new dropped events every minute
                 long currtime = DateTime.Now.Ticks;
@@ -215,7 +224,21 @@ namespace F2B
 
                 return;
             }
-            queue.Add(new Tuple<EventEntry, string>(item, processor));
+            switch (priority)
+            {
+                case Priority.Low:
+                    queueLow.Add(new Tuple<EventEntry, string>(item, processor));
+                    break;
+                case Priority.Medium:
+                    queueMedium.Add(new Tuple<EventEntry, string>(item, processor));
+                    break;
+                case Priority.High:
+                    queueHigh.Add(new Tuple<EventEntry, string>(item, processor));
+                    break;
+                default:
+                    Log.Error("Unsupported queue priority " + priority);
+                    break;
+            }
         }
 
         private void Consume(object tnumber)
@@ -246,7 +269,21 @@ namespace F2B
 
                 try
                 {
-                    Tuple<EventEntry, string> entry = queue.Take(cancel.Token);
+                    Tuple<EventEntry, string> entry;
+#if DEBUG
+                    if (Log.Level == EventLogEntryType.Information)
+                    {
+                        Log.Info(logpfx + "queue High(" + queueHigh.Count + ")/Medium(" + queueMedium.Count + ")/Low(" + queueLow.Count + ")");
+                    }
+                    int queueIndex =
+#endif
+                    BlockingCollection<Tuple<EventEntry, string>>.TakeFromAny(queue, out entry, cancel.Token);
+#if DEBUG
+                    if (Log.Level == EventLogEntryType.Information)
+                    {
+                        Log.Info(logpfx + "queue High(" + queueHigh.Count + ")/Medium(" + queueMedium.Count + ")/Low(" + queueLow.Count + "): queueIndex = " + queueIndex);
+                    }
+#endif
                     evtlog = entry.Item1;
                     procName = entry.Item2;
                 }

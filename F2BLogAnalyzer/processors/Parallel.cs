@@ -35,10 +35,10 @@ namespace F2B.processors
         {
             foreach (string processor in processors)
             {
-                Produce(new EventEntry(evtlog), processor);
+                Produce(new EventEntry(evtlog), processor, EventQueue.Priority.Medium);
             }
 
-            return null;
+            return goto_next;
         }
 
 #if DEBUG

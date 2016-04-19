@@ -3,7 +3,6 @@ using F2B.inputs;
 using F2B.processors;
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Reflection;
 using System.ServiceProcess;
 using System.Threading;
@@ -181,7 +180,7 @@ namespace F2B
             return ret;
         }
 
-        public void Produce(EventEntry item, string processor, bool ignoreQueueSizeLimit = false)
+        public void Produce(EventEntry item, string processor, EventQueue.Priority priority = EventQueue.Priority.Low)
         {
             if (equeue == null)
             {
@@ -197,7 +196,7 @@ namespace F2B
 
             Log.Info("Service[" + item.Id + "@" + item.Input.Name + "] (re)queued message"
                 + " with first processor name " + processor);
-            equeue.Produce(item, processor, ignoreQueueSizeLimit);
+            equeue.Produce(item, processor, priority);
         }
 
         private void ServiceThread()
