@@ -11,6 +11,9 @@ namespace F2B.processors
         #region Fields
         private int cleanup;
         private int max_filter_rules;
+        private ulong weight;
+        private bool permit;
+        private bool persistent;
         #endregion
 
         #region Constructors
@@ -42,6 +45,24 @@ namespace F2B.processors
                 FwManager.Instance.Interval = 1000 * cleanup;
             }
             FwManager.Instance.MaxSize = max_filter_rules;
+
+            weight = 0;
+            if (config.Options["weight"] != null)
+            {
+                weight = ulong.Parse(config.Options["weight"].Value);
+            }
+
+            permit = false;
+            if (config.Options["permit"] != null)
+            {
+                permit = bool.Parse(config.Options["permit"].Value);
+            }
+
+            persistent = false;
+            if (config.Options["persistent"] != null)
+            {
+                persistent = bool.Parse(config.Options["persistent"].Value);
+            }
         }
         #endregion
 
@@ -49,7 +70,7 @@ namespace F2B.processors
         protected override void ExecuteFail2banAction(EventEntry evtlog, IPAddress addr, int prefix, long expiration)
         {
             F2B.FwData fwData = new F2B.FwData(expiration, addr, prefix);
-            F2B.FwManager.Instance.Add(fwData);
+            F2B.FwManager.Instance.Add(fwData, weight, permit, persistent);
         }
 
 
@@ -58,6 +79,9 @@ namespace F2B.processors
         {
             output.WriteLine("config cleanup: " + cleanup);
             output.WriteLine("config max_filter_rules: " + max_filter_rules);
+            output.WriteLine("config weight: " + weight);
+            output.WriteLine("config permit: " + permit);
+            output.WriteLine("config persistent: " + persistent);
             base.Debug(output);
             output.WriteLine("FwManager:");
             F2B.FwManager.Instance.Debug(output);

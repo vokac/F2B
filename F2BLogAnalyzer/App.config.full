@@ -751,7 +751,8 @@ treshold: ${${Fail2ban.Last}.Treshold}
           <option key="max_ignore" value="60"/> <!-- maximum time in seconds we ignore message with same parameters (minimum is real bantime/100) -->
           <option key="bantime" value="600"/> <!-- used only if Fail2ban module doesn't provide specific value -->
           <option key="cleanup" value="60"/> <!-- clean list of expired rules every cleanup seconds -->
-          <option key="max_filter_rules" value="600"/> <!-- maximum number of active F2B filter rules -->
+          <option key="max_filter_rules" value="0"/> <!-- maximum number of active F2B filter rules (0 .. no limit) -->
+          <option key="permit" value="false"/> <!-- add F2B permit filter rule (instead of blocking rule) -->
         </options>
         <goto on_error_next="true"/>
       </processor>
@@ -761,7 +762,9 @@ treshold: ${${Fail2ban.Last}.Treshold}
           <option key="max_ignore" value="60"/> <!-- maximum time in seconds we ignore message with same parameters (minimum is real bantime/100) -->
           <option key="bantime" value="600"/> <!-- used only if Fail2ban module doesn't provide specific value -->
           <option key="cleanup" value="60"/> <!-- clean list of expired rules every cleanup seconds -->
-          <option key="max_filter_rules" value="600"/> <!-- maximum number of active F2B filter rules -->
+          <option key="max_filter_rules" value="0"/> <!-- maximum number of active F2B filter rules (0 .. no limit) -->
+          <option key="permit" value="false"/> <!-- add F2B permit filter rule (instead of blocking rule) -->
+          <option key="persistent" value="false"/> <!-- F2B persistent filter rule (survive restart) -->
         </options>
         <goto on_error_next="true"/>
       </processor>

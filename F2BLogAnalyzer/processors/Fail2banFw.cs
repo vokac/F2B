@@ -610,6 +610,7 @@ namespace F2B.processors
         #region Fields
         private int cleanup;
         private int max_filter_rules;
+        private bool permit;
         #endregion
 
         #region Constructors
@@ -641,13 +642,19 @@ namespace F2B.processors
                 F2B.processors.FwManager.Instance.Interval = 1000 * cleanup;
             }
             F2B.processors.FwManager.Instance.MaxSize = max_filter_rules;
+
+            permit = false;
+            if (config.Options["permit"] != null)
+            {
+                permit = bool.Parse(config.Options["permit"].Value);
+            }
         }
         #endregion
 
         #region Override
         protected override void ExecuteFail2banAction(EventEntry evtlog, IPAddress addr, int prefix, long expiration)
         {
-            F2B.processors.FwManager.Instance.Add(expiration, addr, prefix);
+            F2B.processors.FwManager.Instance.Add(expiration, addr, prefix, permit);
         }
 
 
