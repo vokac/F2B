@@ -218,6 +218,7 @@
     <!-- Parameters for log event producer/consumer queue -->
     <queue>
       <maxsize>100000</maxsize><!-- maximum lenght of event queue (0 ... no limit) -->
+      <maxtime>10</maxtime><!-- maximum run time for full chain of processors (0 ... no limit) -->
       <consumers>10</consumers><!-- number of event consumer threads -->
     </queue>
 

@@ -8,6 +8,7 @@ using System.Diagnostics;
 using System.IO;
 using System.Net;
 using System.Threading;
+using System.Timers;
 #endregion
 
 namespace F2B
@@ -129,23 +130,154 @@ namespace F2B
     }
 
 
+    class ProcPerformance
+    {
+        public int count;
+        public double min;
+        public double max;
+        public double sum;
+
+        public ProcPerformance()
+        {
+            count = 0;
+            min = int.MaxValue;
+            max = 0;
+            sum = 0;
+        }
+
+        override public string ToString()
+        {
+            return string.Format("ProcPerformance({0:0.00}/{1}={2:0.00}ms,{3:0.00}ms,{4:0.00}ms)", sum, count, sum / count, min, max);
+        }
+    }
+
+    class EventQueueThread
+    {
+        private int number;
+        private Thread thread;
+        private bool active;
+        private string last;
+        private DateTime startProc;
+        private DateTime startChain;
+        private IDictionary<string, ProcPerformance> perf;
+
+        public int Number { get { return number; } }
+        public bool Active { get { return active; } }
+        public bool AbortAllowed { get; set; }
+        public string Name { get { return last; } }
+        public double ProcTime { get { return active ? DateTime.Now.Subtract(startProc).TotalMilliseconds : 0; } }
+        public double ChainTime { get { return active ? DateTime.Now.Subtract(startChain).TotalMilliseconds : 0; } }
+
+        public EventQueueThread(ParameterizedThreadStart start, int number)
+        {
+            this.number = number;
+            active = false;
+            last = null;
+            perf = new Dictionary<string, ProcPerformance>();
+
+            AbortAllowed = false;
+
+            thread = new Thread(start);
+            thread.IsBackground = true;
+            thread.Start(this);
+        }
+
+        public void Abort()
+        {
+            if (thread.IsAlive && AbortAllowed)
+            {
+                Log.Info("EventQueueThread[" + number + "].Abort()");
+                thread.Abort();
+            }
+        }
+
+        public void Finish()
+        {
+            if (thread.IsAlive && AbortAllowed)
+            {
+                Log.Info("EventQueueThread[" + number + "].Abort()");
+                thread.Abort();
+            }
+
+            Log.Info("EventQueueThread[" + number + "].Join()");
+            thread.Join();
+        }
+
+        public void Reset()
+        {
+            AbortAllowed = false;
+
+            active = false;
+            last = null;
+        }
+
+        public void Process(string name)
+        {
+            DateTime curr = DateTime.Now;
+
+            if (active && last != null)
+            {
+                ProcPerformance p;
+                if (!perf.TryGetValue(last, out p))
+                {
+                    p = new ProcPerformance();
+                    perf[last] = p;
+                }
+
+                double diff = curr.Subtract(startProc).TotalMilliseconds;
+                p.count++;
+                p.sum += diff;
+                if (p.min > diff) p.min = diff;
+                if (p.max < diff) p.max = diff;
+            }
+
+            if (name != null)
+            {
+                if (!active)
+                {
+                    active = true;
+                    startChain = curr;
+                }
+                startProc = curr;
+                last = name;
+            }
+            else
+            {
+                Reset();
+            }
+            //timer.Enabled = true;
+        }
+
+        public ProcPerformance Performance(string name)
+        {
+            ProcPerformance p;
+            if (!perf.TryGetValue(name, out p))
+            {
+                return null;
+            }
+
+            return p;
+        }
+    }
     public class EventQueue
     {
-        public enum Priority { Low, Medium, High};
+        public enum Priority { Low, Medium, High };
 
         #region Properties
         #endregion
 
         #region Fields
         private volatile bool started;
-        private Thread thread;
         private CancellationTokenSource cancel;
         private BlockingCollection<Tuple<EventEntry, string>> queueLow;
         private BlockingCollection<Tuple<EventEntry, string>> queueMedium;
         private BlockingCollection<Tuple<EventEntry, string>> queueHigh;
         private BlockingCollection<Tuple<EventEntry, string>>[] queue;
         private Dictionary<string, BaseProcessor> processors;
+        private EventQueueThread[] ethreads;
+        private System.Timers.Timer abort;
         private int limit;
+        private int maxtime;
         private int dropped;
         private int max_errs;
         private long lasttime;
@@ -161,6 +293,7 @@ namespace F2B
             QueueElement queuecfg = config.Queue;
 
             limit = queuecfg.MaxSize.Value;
+            maxtime = queuecfg.MaxTime.Value;
             nconsumers = queuecfg.Consumers.Value;
             dropped = 0;
             max_errs = 5;
@@ -171,6 +304,14 @@ namespace F2B
             queueHigh = new BlockingCollection<Tuple<EventEntry, string>>();
             queue = new[] { queueHigh, queueMedium, queueLow };
             processors = procs;
+
+            ethreads = new EventQueueThread[nconsumers];
+            abort = null;
+            if (maxtime > 0)
+            {
+                abort = new System.Timers.Timer(maxtime * 1000 / 10);
+                abort.Elapsed += Abort;
+            }
         }
         #endregion
 
@@ -187,12 +328,12 @@ namespace F2B
             Log.Info("Entry queue create " + nconsumers + " consumer threads");
             for (int i = 0; i < nconsumers; i++)
             {
-                // this lambda function doesn't work, it is probably evaluated
-                // during thread start and "i" can contain different value?!?
-                //thread = new Thread(() => Consume(i));
-                thread = new Thread(Consume);
-                thread.IsBackground = true;
-                thread.Start(new IntPtr(i));
+                ethreads[i] = new EventQueueThread(Consume, i);
+            }
+
+            if (abort != null)
+            {
+                abort.Enabled = true;
             }
         }
 
@@ -206,6 +347,89 @@ namespace F2B
 
             started = false; // this must be set before cancel.Cancel
             cancel.Cancel(false);
+
+            Log.Info("Entry queue join " + nconsumers + " consumer threads");
+            for (int i = 0; i < nconsumers; i++)
+            {
+                if (ethreads[i] == null) continue;
+                ethreads[i].Finish();
+            }
+
+#if DEBUG
+            IDictionary<string, ProcPerformance> summary = new Dictionary<string, ProcPerformance>();
+            foreach (string procName in processors.Keys)
+            {
+                summary[procName] = new ProcPerformance();
+            }
+
+            for (int i = 0; i < nconsumers; i++)
+            {
+                if (ethreads[i] == null) continue;
+                foreach (string procName in processors.Keys)
+                {
+                    ProcPerformance p = ethreads[i].Performance(procName);
+                    if (p == null) continue;
+                    summary[procName].count += p.count;
+                    summary[procName].sum += p.sum;
+                    if (summary[procName].min > p.min) summary[procName].min = p.min;
+                    if (summary[procName].max < p.max) summary[procName].max = p.max;
+                }
+            }
+
+            foreach (string procName in processors.Keys)
+            {
+                ProcPerformance p = summary[procName];
+                Log.Info(string.Format("Performance[{0}]: avg({1:0.00}/{2}={3:0.00}ms), min({4:0.00}ms), max({5:0.00}ms)", procName, p.sum, p.count, p.sum / p.count, p.min, p.max));
+            }
+#endif
+
+            for (int i = 0; i < nconsumers; i++)
+            {
+                if (ethreads[i] == null) continue;
+                ethreads[i] = null;
+            }
+
+            if (abort != null)
+            {
+                abort.Enabled = false;
+            }
+        }
+
+        private void Abort(object sender, ElapsedEventArgs e)
+        {
+            if (abort == null)
+            {
+                return;
+            }
+
+            if (!abort.Enabled)
+            {
+                // this should prevent race condition, because elapsed
+                // event is queued for execution on a thread poole thread
+                return;
+            }
+
+            int active = 0;
+            int aborted = 0;
+            for (int i = 0; i < nconsumers; i++)
+            {
+                EventQueueThread ethread = ethreads[i];
+                if (ethread == null) continue;
+                if (!ethread.Active) continue;
+                active++;
+                if (ethread.ChainTime < maxtime * 1000) continue;
+                ethread.Abort();
+                aborted++;
+            }
+
+            if (aborted > 0)
+            {
+                Log.Info("Aborted " + aborted + " threads, active threads "
+                    + active + " (total threads " + nconsumers
+                    + "), event queue size queue High(" + queueHigh.Count
+                    + ")/Medium(" + queueMedium.Count + ")/Low("
+                    + queueLow.Count + ")");
+            }
         }
 
         public void Produce(EventEntry item, string processor = null, Priority priority = Priority.Low)
@@ -241,9 +465,10 @@ namespace F2B
             }
         }
 
-        private void Consume(object tnumber)
+        private void Consume(object data)
         {
-            Log.Info("Log event consumption (thread " + tnumber + "): start");
+            EventQueueThread ethread = (EventQueueThread)data;
+            Log.Info("Log event consumption (thread " + ethread.Number + "): start");
 
             EventEntry evtlog;
             string procName;
@@ -265,7 +490,7 @@ namespace F2B
                 evtlog = null;
                 procName = null;
                 tnevts++;
-                logpfx = string.Format("Consuming({0}/{1}): ", tnumber, tnevts);
+                logpfx = string.Format("Consuming({0}/{1}): ", ethread.Number, tnevts);
 
                 try
                 {
@@ -353,7 +578,7 @@ namespace F2B
                 }
 
                 logpfx = string.Format("Consuming({0}/{1}) event[{2}@{3}]: ",
-                tnumber, tnevts, evtlog.Id, evtlog.Input.Name);
+                    ethread.Number, tnevts, evtlog.Id, evtlog.Input.Name);
                 Log.Info(logpfx + evtlog.Address + ", " + evtlog.Username);
 
                 BaseProcessor proc = null;
@@ -362,8 +587,11 @@ namespace F2B
                     procName = firstProcName;
                 }
 
+                //ethread.Reset();
                 while (true)
                 {
+                    ethread.Process(procName);
+
                     if (procName == null)
                     {
                         Log.Info(logpfx + "NULL processor terminated event processing");
@@ -381,6 +609,8 @@ namespace F2B
 
                     try
                     {
+                        ethread.AbortAllowed = true;
+
                         if (nconsumers == 1 || typeof(IThreadSafeProcessor).IsAssignableFrom(proc.GetType()))
                         {
                             procName = proc.Execute(evtlog);
@@ -392,6 +622,14 @@ namespace F2B
                                 procName = proc.Execute(evtlog);
                             }
                         }
+                    }
+                    catch (ThreadAbortException ex)
+                    {
+                        ethread.Reset();
+                        Thread.ResetAbort();
+                        Log.Warn(logpfx + "abort(" + proc.Name + ", "
+                            + errtime + ", " + errcnt + "): " + ex.Message);
+                        break;
                     }
                     catch (Exception ex)
                     {
@@ -413,14 +651,27 @@ namespace F2B
                         // log only limited number of execptions
                         if (errcnt < max_errs)
                         {
-                            Log.Error(logpfx + " exception(" + errtime
-                                + ","+ errcnt + "): " + ex.ToString());
+                            Log.Error(logpfx + "exception(" + proc.Name + ", "
+                                + errtime + ", "+ errcnt + "): " + ex.ToString());
                         }
                     }
+                    finally
+                    {
+                        ethread.AbortAllowed = false;
+                    }
+
+#if DEBUG
+                    Log.Info(logpfx + "processor \"" + ethread.Name + "\" execution time: " + string.Format("{0:0.00}ms", ethread.ProcTime / 1000));
+#endif
                 }
+
+#if DEBUG
+                Log.Info(logpfx + "processor chain execution time: " + string.Format("{0:0.00}s", ethread.ChainTime / 1000));
+#endif
+                ethread.Reset();
             }
 
-            Log.Info("Log event consumption (thread " + tnumber + "): finished");
+            Log.Info("Log event consumption (thread " + ethread.Number + "): finished");
         }
         #endregion
     }

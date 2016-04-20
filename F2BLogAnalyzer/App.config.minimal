@@ -39,6 +39,7 @@
     <!-- Parameters for log event producer/consumer queue -->
     <queue>
       <maxsize>100000</maxsize>
+      <maxtime>10</maxtime>
       <consumers>1</consumers>
     </queue>
 

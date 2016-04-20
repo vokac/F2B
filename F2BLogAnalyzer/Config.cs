@@ -750,7 +750,7 @@ namespace F2B
         #endregion
 
         #region Properties
-        // Get or set the selector query.
+        // Get maximum lenght of event queue (0 ... no limit).
         [ConfigurationProperty("maxsize")]
         public ConfigurationTextElement<int> MaxSize
         {
@@ -760,7 +760,17 @@ namespace F2B
             }
         }
 
-        // Get or set the selector query.
+        // Get maximum run time for full chain of processors.
+        [ConfigurationProperty("maxtime")]
+        public ConfigurationTextElement<int> MaxTime
+        {
+            get
+            {
+                return (ConfigurationTextElement<int>)this["maxtime"];
+            }
+        }
+
+        // Get number of event consumer threads.
         [ConfigurationProperty("consumers")]
         public ConfigurationTextElement<int> Consumers
         {
