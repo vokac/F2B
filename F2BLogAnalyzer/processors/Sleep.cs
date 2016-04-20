@@ -25,7 +25,7 @@ namespace F2B.processors
             {
                 foreach (SleepMode item in Enum.GetValues(typeof(SleepMode)))
                 {
-                    if (item.ToString().ToLower().Equals(config.Options["mode"]))
+                    if (item.ToString().ToLower().Equals(config.Options["mode"].Value.ToLower()))
                         mode = item;
                 }
             }
