@@ -727,7 +727,9 @@ performance for milions firewall rules.
   <option key="max_ignore" value="60"/> <!-- maximum time in seconds we ignore message with same parameters (minimum is real bantime/100) -->
     <option key="bantime" value="600"/> <!-- used only if Fail2ban module doesn't provide specific value -->
     <option key="cleanup" value="60"/> <!-- clean list of expired rules every cleanup seconds -->
-    <option key="max_filter_rules" value="600"/> <!-- maximum number of active F2B filter rules -->
+    <option key="max_filter_rules" value="0"/> <!-- maximum number of active F2B filter rules (0 .. no limit) -->
+    <option key="permit" value="false"/> <!-- add F2B permit filter rule (instead of blocking rule) -->
+    <option key="persistent" value="false"/> <!-- F2B persistent filter rule (survive restart) -->
   </options>
   <goto on_error_next="true"/>
 </processor>
@@ -748,7 +750,8 @@ but add/remove firewall rule can take excessive time).
     <option key="max_ignore" value="60"/> <!-- maximum time in seconds we ignore message with same parameters (minimum is real bantime/100) -->
     <option key="bantime" value="600"/> <!-- used only if Fail2ban module doesn't provide specific value -->
     <option key="cleanup" value="60"/> <!-- clean list of expired rules every cleanup seconds -->
-    <option key="max_filter_rules" value="600"/> <!-- maximum number of active F2B filter rules -->
+    <option key="max_filter_rules" value="0"/> <!-- maximum number of active F2B filter rules (0 .. no limit) -->
+    <option key="permit" value="false"/> <!-- add F2B permit filter rule (instead of blocking rule) -->
   </options>
   <goto on_error_next="true"/>
 </processor>
@@ -778,8 +781,9 @@ from evaluated string expression
 
 Internal event queue options that allows to limit number of unprocessed log
 events to prevent memory exhaustion. In case this limit is reached, further
-events will be immediately dropped. This is just another safety mechanism
-in case F2B implementation misbehaves.
+events will be immediately dropped. Also maximum time for whole processor
+chain can be specified to protect execution from processor that hangs. This
+is just another safety mechanism in case F2B implementation misbehaves.
 
 Event processors can be implemented thread safe or thread safety can be
 guaranteed by global lock. This means that log events can be processed
@@ -791,8 +795,10 @@ per each consumer thread).
 ```xml
 <!-- Parameters for log event producer/consumer queue -->
 <queue>
-  <!-- maximum length of event queue (0 ... no limit) -->
+  <!-- maximum lenght of event queue (0 ... no limit) -->
   <maxsize>100000</maxsize>
+  <!-- maximum run time for full chain of processors -->
+  <maxtime>10</maxtime>
   <!-- number of event consumer threads -->
   <consumers>10</consumers>
 </queue>
