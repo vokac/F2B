@@ -241,6 +241,10 @@ namespace F2B
                         onStartMethod.Invoke(service, new object[] { new string[] { } });
                     }
 
+#if DEBUG
+                    Utils.DumpProcessInfo();
+#endif
+
                     // Waiting the end
                     string help = "Interactive help\n"
                         + "  press 'h' key for this help\n"
@@ -267,6 +271,7 @@ namespace F2B
                         else if (key.KeyChar == 'd')
                         {
                             Log.Info("Debug key pressed");
+                            Utils.DumpProcessInfo();
                             ((Service)servicesToRun[0]).Dump(dumpFile);
                         }
 #endif
@@ -285,6 +290,10 @@ namespace F2B
                         Log.Info("Stopping " + service.ServiceName + " ...");
                         onStopMethod.Invoke(service, null);
                     }
+
+#if DEBUG
+                    Utils.DumpProcessInfo();
+#endif
 
                     Log.Info("Debug F2B service finished");
                 }

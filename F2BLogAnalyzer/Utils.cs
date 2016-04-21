@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Diagnostics.Eventing.Reader;
 using System.Linq;
 using System.Net;
@@ -54,6 +55,23 @@ namespace F2B
             }
 
             return new IPAddress(addrBytes);
+        }
+
+        public static void DumpProcessInfo()
+        {
+            Process currentProcess = Process.GetCurrentProcess();
+            Log.Info("Process[" + currentProcess.Id + "]: NonpagedSystemMemorySize64 = " + currentProcess.NonpagedSystemMemorySize64);
+            Log.Info("Process[" + currentProcess.Id + "]: PagedMemorySize64 = " + currentProcess.PagedMemorySize64);
+            Log.Info("Process[" + currentProcess.Id + "]: PagedSystemMemorySize64 = " + currentProcess.PagedSystemMemorySize64);
+            Log.Info("Process[" + currentProcess.Id + "]: PeakPagedMemorySize64 = " + currentProcess.PeakPagedMemorySize64);
+            Log.Info("Process[" + currentProcess.Id + "]: PeakVirtualMemorySize64 = " + currentProcess.PeakVirtualMemorySize64);
+            Log.Info("Process[" + currentProcess.Id + "]: PrivateMemorySize64 = " + currentProcess.PrivateMemorySize64);
+            Log.Info("Process[" + currentProcess.Id + "]: VirtualMemorySize64 = " + currentProcess.VirtualMemorySize64);
+            Log.Info("Process[" + currentProcess.Id + "]: PrivilegedProcessorTime = " + currentProcess.PrivilegedProcessorTime);
+            Log.Info("Process[" + currentProcess.Id + "]: StartTime = " + currentProcess.StartTime);
+            //Log.Info("Process[" + currentProcess.Id + "]: ExitTime = " + currentProcess.ExitTime);
+            Log.Info("Process[" + currentProcess.Id + "]: TotalProcessorTime = " + currentProcess.TotalProcessorTime);
+            Log.Info("Process[" + currentProcess.Id + "]: UserProcessorTime = " + currentProcess.UserProcessorTime);
         }
     }
 
