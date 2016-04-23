@@ -101,22 +101,37 @@ namespace F2B.processors
 
         public override string Execute(EventEntry evtlog)
         {
-            // check/refresh database connection state (reconnect?)
-            if (conn.State != ConnectionState.Open)
-            {
-                conn.Close();
-                conn.Open();
-            }
+            int retry = 1;
 
-            ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
-            using (OdbcCommand cmd = new OdbcCommand(insert, conn))
+            while (retry >= 0)
             {
-                foreach (var item in columns)
+                try
                 {
-                    cmd.Parameters.Add(new OdbcParameter(item.Item1, tpl.Apply(item.Item2)));
-                }
+                    ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
+                    using (OdbcCommand cmd = new OdbcCommand(insert, conn))
+                    {
+                        foreach (var item in columns)
+                        {
+                            cmd.Parameters.Add(new OdbcParameter(item.Item1, tpl.Apply(item.Item2)));
+                        }
 
-                cmd.ExecuteNonQuery();
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    break;
+                }
+                catch (InvalidOperationException ex)
+                {
+                    Log.Warn("ODBC Exception (trying to reconnect): " + ex.Message);
+
+                    if (conn.State != ConnectionState.Closed)
+                    {
+                        conn.Close();
+                    }
+                    conn.Open();
+
+                    retry--;
+                }
             }
 
             return goto_next;
