@@ -539,7 +539,8 @@ namespace F2B
 
                 if (debug)
                 {
-                    Log.Info(logpfx + "Dump processors debug info");
+                    Log.Warn(logpfx + "Dump processors debug info");
+                    Utils.DumpProcessInfo(EventLogEntryType.Warning);
                     StreamWriter output = null;
                     lock (thisInst)
                     {
