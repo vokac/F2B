@@ -310,7 +310,7 @@
         <description>Processor for debuging / testing concurency</description>
         <options>
           <option key="mode" value="random"/>
-          <option key="pattern" value="10"/>
+          <option key="interval" value="10"/>
         </options>
       </processor>
       <processor name="logger" type="Logger">

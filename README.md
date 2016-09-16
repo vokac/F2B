@@ -405,6 +405,23 @@ This processor terminate processing chain.
 <processor name="unique_stop_name" type="Stop"/>
 ```
 
+#### Sleep
+
+This processors just stops processing logged event for an interval defined
+in processor options. Fixed interval can be specified by using "normal"
+mode or time can be uniformaly distributed "random" number from defined
+interval. Interval can be an expression that results in number of seconds.
+
+```xml
+<processor name="sleep" type="Sleep">
+  <description>Processor for debuging / testing concurency</description>
+  <options>
+    <option key="mode" value="random"/>
+    <option key="interval" value="10"/>
+  </options>
+</processor>
+```
+
 #### Parallel
 
 Run specified processors in parallel using separate worker threads.
@@ -562,6 +579,18 @@ rules and no furter processor is called.
 </processor>
 ```
 
+#### EventData
+
+This processor just extract EventData attributes from windows log entry
+and create ${EventData.*} variables that can be used in processors later
+in processing chain.
+
+```xml
+<processor name="event_data" type="EventData">
+  <description>Add all user data from windows event log record as ${EventData.*} variables</description>
+</processor>
+```
+
 #### Logger
 
 Log selected events in a file (timestamp, hostname, selector_name, IP address,
@@ -586,7 +615,8 @@ treshold. It is also possible to keep history of several rotated log files.
 #### LoggerSQL
 
 Log selected events in a SQL database using ODBC connection string and column
-to F2B processor variable name map.
+to F2B processor variable name map (you have to put EventData processor before
+if you want to use ${EventData.*} variables)
 
 ```sql
 CREATE TABLE `f2b` (
@@ -596,7 +626,9 @@ CREATE TABLE `f2b` (
     `id` INTEGER DEFAULT NULL,
     `input` VARCHAR(50) DEFAULT NULL,
     `selector` VARCHAR(50) DEFAULT NULL,
-    `status` VARCHAR(10) DEFAULT NULL,
+    `login` VARCHAR(10) DEFAULT NULL,
+    `status` INTEGER DEFAULT NULL,
+    `substatus` INTEGER DEFAULT NULL,
     `event` INTEGER DEFAULT NULL,
     `record` INTEGER DEFAULT NULL,
     `machine` VARCHAR(50) DEFAULT NULL,
@@ -621,7 +653,9 @@ CREATE TABLE `f2b` (
     <option key="column.id" value="${Event.Id}"/>
     <option key="column.input" value="${Event.Input}"/>
     <option key="column.selector" value="${Event.Selector}"/>
-    <option key="column.status" value="${Event.Status}"/>
+    <option key="column.login" value="${Event.Login}"/>
+    <option key="column.status" value="${EventData.Status}"/>
+    <option key="column.substatus" value="${EventData.SubStatus}"/>
     <option key="column.event" value="${Event.EventId}"/>
     <option key="column.record" value="${Event.RecordId}"/>
     <option key="column.machine" value="${Event.MachineName}"/>

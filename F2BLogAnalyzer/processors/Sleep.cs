@@ -13,7 +13,7 @@ namespace F2B.processors
         public enum SleepMode { Normal, Random }
 
         private SleepMode mode;
-        private string pattern;
+        private string interval;
         private Random rnd;
 
         #region Constructors
@@ -30,14 +30,14 @@ namespace F2B.processors
                 }
             }
 
-            pattern = null;
-            if (config.Options["pattern"] != null && !string.IsNullOrEmpty(config.Options["pattern"].Value))
+            interval = null;
+            if (config.Options["interval"] != null && !string.IsNullOrEmpty(config.Options["interval"].Value))
             {
-                pattern = config.Options["pattern"].Value;
+                interval = config.Options["interval"].Value;
             }
             else
             {
-                Log.Warn("sleep pattern not defined");
+                Log.Warn("sleep interval not defined");
             }
 
             if (mode == SleepMode.Random)
@@ -50,14 +50,14 @@ namespace F2B.processors
         #region Override
         public override string Execute(EventEntry evtlog)
         {
-            if (string.IsNullOrEmpty(pattern))
+            if (string.IsNullOrEmpty(this.interval))
                 return goto_next;
 
             ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
-            string value = tpl.Apply(pattern);
+            string value = tpl.Apply(this.interval);
 
-            int interval;
-            if (!int.TryParse(value, out interval))
+            int intvl;
+            if (!int.TryParse(value, out intvl))
             {
                 Log.Info("unable to parse \"" + value + "\" as integer");
                 return goto_next;
@@ -66,10 +66,10 @@ namespace F2B.processors
             switch (mode)
             {
                 case SleepMode.Normal:
-                    Thread.Sleep(1000 * interval);
+                    Thread.Sleep(1000 * intvl);
                     break;
                 case SleepMode.Random:
-                    Thread.Sleep(rnd.Next(1000 * interval));
+                    Thread.Sleep(rnd.Next(1000 * intvl));
                     break;
                 default:
                     Log.Warn("unsupported sleep mode " + mode);
@@ -85,7 +85,7 @@ namespace F2B.processors
             base.Debug(output);
 
             output.WriteLine("config mode: {0}", mode);
-            output.WriteLine("config pattern: {0}", pattern);
+            output.WriteLine("config interval: {0}", interval);
         }
 #endif
         #endregion
