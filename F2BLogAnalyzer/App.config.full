@@ -359,8 +359,8 @@
           <option key="column.input" value="${Event.Input}"/>
           <option key="column.selector" value="${Event.Selector}"/>
           <option key="column.login" value="${Event.Login}"/>
-          <option key="column.status" value="${EventData.Status}"/>
-          <option key="column.substatus" value="${EventData.SubStatus}"/>
+          <option key="column.status" value="${EventData.Status:=-1}"/>
+          <option key="column.substatus" value="${EventData.SubStatus:=-1}"/>
           <option key="column.event" value="${Event.EventId}"/>
           <option key="column.record" value="${Event.RecordId}"/>
           <option key="column.machine" value="${Event.MachineName}"/>
