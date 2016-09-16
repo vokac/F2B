@@ -151,6 +151,23 @@ Get-EventLog -LogName Security
 		| Select-Object -Last 100 `
 		| Format-Table -AutoSize -Wrap
 ```
+or
+```
+$query = @"
+<QueryList>
+  <Query Id="0" Path="Microsoft-Windows-Security-Auditing">
+    <Select Path="Security">*[System[(band(Keywords,4503599627370496))]]</Select>
+    <Suppress Path="Security">
+      (*[System[(EventID='4768')]] or *[System[(EventID='4771')]])
+      and
+      (*[EventData[Data[@Name='Status']!='0x6']] and *[EventData[Data[@Name='Status']!='0x18']])
+    </Suppress>
+  </Qeury>
+</QueryList>
+"@
+
+Get-WinEvent -LogName Security -FilterXPath $query -MaxEvents 10
+```
 
 
 F2B Configuration

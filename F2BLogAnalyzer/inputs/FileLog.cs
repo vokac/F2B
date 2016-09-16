@@ -484,11 +484,11 @@ namespace F2B.inputs
             }
 
             EventEntry evt = new EventEntry(created, strHostname,
-                address, port, strUsername, strDomain, Status, this, line);
+                address, port, strUsername, strDomain, Login, this, line);
 
             Log.Info("FileLog[" + evt.Id + "@" + Name + "] queued message "
                 + strUsername + "@" + address + ":" + port + " from " + strHostname
-                + " status " + Status);
+                + " status " + Login);
 
             equeue.Produce(evt, Processor);
         }

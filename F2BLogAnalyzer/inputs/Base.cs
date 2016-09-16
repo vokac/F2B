@@ -22,7 +22,7 @@ namespace F2B.inputs
         {
             get { return string.Concat(InputName, "/", SelectorName); }
         }
-        public LoginStatus Status { get; private set; }
+        public LoginStatus Login { get; private set; }
         #endregion
 
         #region Constructors
@@ -36,9 +36,9 @@ namespace F2B.inputs
 
             switch (selector.Login)
             {
-                case "success": Status = LoginStatus.SUCCESS; break;
-                case "failure": Status = LoginStatus.FAILURE; break;
-                default: Status = LoginStatus.UNKNOWN; break;
+                case "success": Login = LoginStatus.SUCCESS; break;
+                case "failure": Login = LoginStatus.FAILURE; break;
+                default: Login = LoginStatus.UNKNOWN; break;
             }
 
             equeue = queue;

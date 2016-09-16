@@ -466,7 +466,7 @@ namespace F2B.processors
                     if (!success.TryGetValue(evtlog.Address, out history))
                     {
                         // number of records stored in dictionary has maxsize limit
-                        if (evtlog.Status == LoginStatus.SUCCESS && (maxsize == 0 || success.Count < maxsize))
+                        if (evtlog.Login == LoginStatus.SUCCESS && (maxsize == 0 || success.Count < maxsize))
                         {
                             history = new LoginSlidingHistory(TimeSpan.FromSeconds(findtime).Ticks, count);
                             success[evtlog.Address] = history;
@@ -475,7 +475,7 @@ namespace F2B.processors
 
                     if (history != null)
                     {
-                        if (evtlog.Status == LoginStatus.SUCCESS)
+                        if (evtlog.Login == LoginStatus.SUCCESS)
                         {
                             cnt = history.Add(timestamp);
                         }
@@ -501,7 +501,7 @@ namespace F2B.processors
                     {
                         if (!failure.TryGetValue(evtlog.Address, out history))
                         {
-                            if (evtlog.Status == LoginStatus.FAILURE)
+                            if (evtlog.Login == LoginStatus.FAILURE)
                             {
                                 history = new LoginSlidingHistory(TimeSpan.FromSeconds(findtime).Ticks, count);
                                 failure[evtlog.Address] = history;
@@ -510,7 +510,7 @@ namespace F2B.processors
 
                         if (history != null)
                         {
-                            if (evtlog.Status == LoginStatus.FAILURE)
+                            if (evtlog.Login == LoginStatus.FAILURE)
                             {
                                 cnt = history.Add(timestamp);
                             }
@@ -529,11 +529,11 @@ namespace F2B.processors
                 }
             }
 
-            if (evtlog.Status == LoginStatus.SUCCESS)
+            if (evtlog.Login == LoginStatus.SUCCESS)
             {
                 return goto_success;
             }
-            else if (evtlog.Status == LoginStatus.FAILURE)
+            else if (evtlog.Login == LoginStatus.FAILURE)
             {
                 return goto_failure;
             }

@@ -30,7 +30,7 @@ namespace F2B
         int Port { get; }
         string Username { get; }
         string Domain { get; }
-        LoginStatus Status { get; }
+        LoginStatus Login { get; }
         BaseInput Input { get; }
         object LogData { get; }
         IReadOnlyDictionary<string, object> ProcData { get; }
@@ -50,7 +50,7 @@ namespace F2B
         public int Port { get; set; }
         public string Username { get; set; }
         public string Domain { get; set; }
-        public LoginStatus Status { get; set; }
+        public LoginStatus Login { get; set; }
         public BaseInput Input { get; set; }
         public object LogData { get; set; }
         public IReadOnlyDictionary<string, object> ProcData {
@@ -68,7 +68,7 @@ namespace F2B
         #region Constructors
         public EventEntry(DateTime created, string hostname,
             IPAddress address, int port, string username, string domain,
-            LoginStatus status, BaseInput input, object ldata)
+            LoginStatus login, BaseInput input, object ldata)
         {
             Id = Interlocked.Increment(ref _counter);
 
@@ -78,7 +78,7 @@ namespace F2B
             Port = port;
             Username = username;
             Domain = domain;
-            Status = status;
+            Login = login;
             Input = input;
             LogData = ldata;
 
@@ -96,7 +96,7 @@ namespace F2B
             Port = evt.Port;
             Username = evt.Username;
             Domain = evt.Domain;
-            Status = evt.Status;
+            Login = evt.Login;
             Input = evt.Input;
             LogData = evt.LogData;
 

@@ -319,7 +319,7 @@
           <option key="file" value="c:\F2B\full.log"/>
           <option key="size" value="1073741824"/>
           <option key="rotate" value="4"/>
-          <option key="template" value="${Event.Timestamp}\t${Event.TimeCreated}\t${Event.Hostname}\t${Event.Id}\t${Event.Input}\t${Event.Selector}\t${Event.Status}\t${Event.MachineName}\t${Event.EventId}\t${Event.RecordId}\t${Event.Address}\t${Event.Port}\t${Event.Username}\t${Event.Domain}\r\n"/>
+          <option key="template" value="${Event.Timestamp}\t${Event.TimeCreated}\t${Event.Hostname}\t${Event.Id}\t${Event.Input}\t${Event.Selector}\t${Event.Login}\t${EventData.Status}\t${EventData.SubStatus}\t${Event.MachineName}\t${Event.EventId}\t${Event.RecordId}\t${Event.Address}\t${Event.Port}\t${Event.Username}\t${Event.Domain}\r\n"/>
           <option key="synchronized" value="true"/>
         </options>
       </processor>
@@ -358,7 +358,9 @@
           <option key="column.id" value="${Event.Id}"/>
           <option key="column.input" value="${Event.Input}"/>
           <option key="column.selector" value="${Event.Selector}"/>
-          <option key="column.status" value="${Event.Status}"/>
+          <option key="column.login" value="${Event.Login}"/>
+          <option key="column.status" value="${EventData.Status}"/>
+          <option key="column.substatus" value="${EventData.SubStatus}"/>
           <option key="column.event" value="${Event.EventId}"/>
           <option key="column.record" value="${Event.RecordId}"/>
           <option key="column.machine" value="${Event.MachineName}"/>
@@ -585,7 +587,7 @@ Event:
   port: ${Event.Port}
   username: ${Event.Username}
   domain: ${Event.Domain}
-  status: ${Event.Status}
+  login: ${Event.Login}
   event: ${Event.EventId}
   machine: ${Event.MachineName}
   recordid: ${Event.RecordId}
@@ -602,8 +604,8 @@ EventData:
   TargetUserName: ${EventData.TargetUserName}
   TargetDomainName: ${EventData.TargetDomainName}
   Status: ${EventData.Status}
-  FailureReason: ${EventData.FailureReason}
   SubStatus: ${EventData.SubStatus}
+  FailureReason: ${EventData.FailureReason}
   LogonType: ${EventData.LogonType}
   LogonProcessName: ${EventData.LogonProcessName}
   AuthenticationPackageName: ${EventData.AuthenticationPackageName}

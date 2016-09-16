@@ -35,7 +35,7 @@ namespace F2B.processors
             filename = null;
             size = -1;
             rotate = -1;
-            template = @"${Event.Timestamp}\t${Event.TimeCreated}\t${Event.Hostname}\t${Event.Id}\t${Event.Input}\t${Event.Selector}\t${Event.Status}\t${Event.MachineName}\t${Event.EventId}\t${Event.RecordId}\t${Event.Address}\t${Event.Port}\t${Event.Username}\t${Event.Domain}\r\n";
+            template = @"${Event.Timestamp}\t${Event.TimeCreated}\t${Event.Hostname}\t${Event.Id}\t${Event.Input}\t${Event.Selector}\t${Event.Login}\t${Event.MachineName}\t${Event.EventId}\t${Event.RecordId}\t${Event.Address}\t${Event.Port}\t${Event.Username}\t${Event.Domain}\r\n";
             synchronized = true;
 
             if (config.Options["file"] != null && !string.IsNullOrWhiteSpace(config.Options["file"].Value))

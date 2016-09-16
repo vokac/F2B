@@ -7,6 +7,7 @@ using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
+using System.Xml.Linq;
 
 namespace F2B
 {
@@ -65,8 +66,10 @@ namespace F2B
             Log.Logger("Process[" + currentProcess.Id + "]: PagedSystemMemorySize64 = " + currentProcess.PagedSystemMemorySize64, type);
             Log.Logger("Process[" + currentProcess.Id + "]: PeakPagedMemorySize64 = " + currentProcess.PeakPagedMemorySize64, type);
             Log.Logger("Process[" + currentProcess.Id + "]: PeakVirtualMemorySize64 = " + currentProcess.PeakVirtualMemorySize64, type);
+            Log.Logger("Process[" + currentProcess.Id + "]: PeadWorkingSet64 = " + currentProcess.PeakWorkingSet64, type);
             Log.Logger("Process[" + currentProcess.Id + "]: PrivateMemorySize64 = " + currentProcess.PrivateMemorySize64, type);
             Log.Logger("Process[" + currentProcess.Id + "]: VirtualMemorySize64 = " + currentProcess.VirtualMemorySize64, type);
+            Log.Logger("Process[" + currentProcess.Id + "]: WorkingSet64 = " + currentProcess.WorkingSet64, type);
             Log.Logger("Process[" + currentProcess.Id + "]: PrivilegedProcessorTime = " + currentProcess.PrivilegedProcessorTime, type);
             Log.Logger("Process[" + currentProcess.Id + "]: StartTime = " + currentProcess.StartTime, type);
             //Log.Logger("Process[" + currentProcess.Id + "]: ExitTime = " + currentProcess.ExitTime, type);
@@ -312,9 +315,9 @@ namespace F2B
         };
         private static Regex escapeRegex = new Regex(string.Join("|", escapeMapping.Keys));
 
-        public ProcessorEventStringTemplate(EventEntry evtlog)
+        public ProcessorEventStringTemplate(EventEntry evtent)
         {
-            repl = new Dictionary<string, string>(20 + evtlog.ProcData.Count);
+            repl = new Dictionary<string, string>(20 + evtent.ProcData.Count);
 
             // Environment
             repl["Environment.Now"] = DateTime.Now.Ticks.ToString();
@@ -322,22 +325,23 @@ namespace F2B
             repl["Environment.MachineName"] = System.Environment.MachineName;
 
             // F2B Event
-            repl["Event.Id"] = evtlog.Id.ToString();
-            repl["Event.Timestamp"] = evtlog.Created.Ticks.ToString();
-            repl["Event.Hostname"] = (evtlog.Hostname != null ? evtlog.Hostname : "");
-            repl["Event.Type"] = evtlog.Input.InputType;
-            repl["Event.Input"] = evtlog.Input.InputName;
-            repl["Event.Selector"] = evtlog.Input.SelectorName;
-            repl["Event.Address"] = evtlog.Address.ToString();
-            repl["Event.Port"] = evtlog.Port.ToString();
-            repl["Event.Username"] = (evtlog.Username != null ? evtlog.Username : "");
-            repl["Event.Domain"] = (evtlog.Domain != null ? evtlog.Domain : "");
-            repl["Event.Status"] = evtlog.Status.ToString();
+            repl["Event.Id"] = evtent.Id.ToString();
+            repl["Event.Timestamp"] = evtent.Created.Ticks.ToString();
+            repl["Event.Hostname"] = (evtent.Hostname != null ? evtent.Hostname : "");
+            repl["Event.Type"] = evtent.Input.InputType;
+            repl["Event.Input"] = evtent.Input.InputName;
+            repl["Event.Selector"] = evtent.Input.SelectorName;
+            repl["Event.Address"] = evtent.Address.ToString();
+            repl["Event.Port"] = evtent.Port.ToString();
+            repl["Event.Username"] = (evtent.Username != null ? evtent.Username : "");
+            repl["Event.Domain"] = (evtent.Domain != null ? evtent.Domain : "");
+            repl["Event.Login"] = evtent.Login.ToString();
+
             // Event
-            if (evtlog.LogData.GetType() == typeof(EventRecordWrittenEventArgs)
-                || evtlog.LogData.GetType().IsSubclassOf(typeof(EventRecordWrittenEventArgs)))
+            if (evtent.LogData.GetType() == typeof(EventRecordWrittenEventArgs)
+                || evtent.LogData.GetType().IsSubclassOf(typeof(EventRecordWrittenEventArgs)))
             {
-                EventRecordWrittenEventArgs evtarg = evtlog.LogData as EventRecordWrittenEventArgs;
+                EventRecordWrittenEventArgs evtarg = evtent.LogData as EventRecordWrittenEventArgs;
                 EventRecord evtrec = evtarg.EventRecord;
                 repl["Event.EventId"] = evtrec.Id.ToString();
                 repl["Event.RecordId"] = evtrec.RecordId.ToString();
@@ -345,6 +349,26 @@ namespace F2B
                 repl["Event.TimeCreated"] = evtrec.TimeCreated.Value.ToString();
                 repl["Event.ProviderName"] = evtrec.ProviderName;
                 repl["Event.ProcessId"] = evtrec.ProcessId.ToString();
+                // Event.EventData (NOTE: use EventData processor to parse event XML data)
+                //if (evtrec.GetType() == typeof(EventLogRecord)
+                //    || evtrec.GetType().IsSubclassOf(typeof(EventLogRecord)))
+                //{
+                //    try
+                //    {
+                //        EventLogRecord evtlog = (EventLogRecord)evtrec;
+                //        XDocument xml = XDocument.Parse(evtlog.ToXml());
+                //        XNamespace ns = "http://schemas.microsoft.com/win/2004/08/events/event";
+
+                //        foreach (var node in xml.Descendants(ns + "Data"))
+                //        {
+                //            repl["Event.EventData." + (string)node.Attribute("Name")] = node.Value;
+                //        }
+                //    }
+                //    catch (Exception ex)
+                //    {
+                //        Log.Info("Unable to get Event.EventData: " + ex.Message);
+                //    }
+                //}
             }
             else
             {
@@ -357,7 +381,7 @@ namespace F2B
             }
 
             // Processor
-            foreach (var item in evtlog.ProcData)
+            foreach (var item in evtent.ProcData)
             {
                 if (item.Value == null) repl[item.Key] = "";
                 else repl[item.Key] = item.Value.ToString();
