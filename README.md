@@ -616,7 +616,9 @@ treshold. It is also possible to keep history of several rotated log files.
 
 Log selected events in a SQL database using ODBC connection string and column
 to F2B processor variable name map (you have to put EventData processor before
-if you want to use ${EventData.*} variables)
+if you want to use ${EventData.*} variables). Some databases doesn't support
+"clever" data conversion and may be it'll be necessary to use string data type
+for most of SQL table columns.
 
 ```sql
 CREATE TABLE `f2b` (
@@ -654,8 +656,8 @@ CREATE TABLE `f2b` (
     <option key="column.input" value="${Event.Input}"/>
     <option key="column.selector" value="${Event.Selector}"/>
     <option key="column.login" value="${Event.Login}"/>
-    <option key="column.status" value="${EventData.Status}"/>
-    <option key="column.substatus" value="${EventData.SubStatus}"/>
+    <option key="column.status" value="${EventData.Status:=-1}"/>
+    <option key="column.substatus" value="${EventData.SubStatus:=-1}"/>
     <option key="column.event" value="${Event.EventId}"/>
     <option key="column.record" value="${Event.RecordId}"/>
     <option key="column.machine" value="${Event.MachineName}"/>
