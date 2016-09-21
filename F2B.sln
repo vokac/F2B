@@ -17,6 +17,7 @@ Project("{8BC9CEB8-8B4A-11D0-8D11-00A0C91BC942}") = "F2BWFP", "F2BWFP\F2BWFP.vcx
 EndProject
 Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0DB55A3E-14A0-4904-A95A-DBD8C42137E9}"
 	ProjectSection(SolutionItems) = preProject
+		build.ps1 = build.ps1
 		README.md = README.md
 	EndProjectSection
 EndProject
@@ -28,16 +29,16 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "F2BLogAnalyzer.nowfp", "F2B
 EndProject
 Global
 	GlobalSection(SharedMSBuildProjectFiles) = preSolution
-		F2BSharedWFP\F2BSharedWFP.projitems*{1a68ed0a-1aea-4b89-bc1b-8f19e3871b5b}*SharedItemsImports = 4
 		F2BShared\F2BShared.projitems*{1a68ed0a-1aea-4b89-bc1b-8f19e3871b5b}*SharedItemsImports = 4
+		F2BSharedWFP\F2BSharedWFP.projitems*{1a68ed0a-1aea-4b89-bc1b-8f19e3871b5b}*SharedItemsImports = 4
 		F2BShared\F2BShared.projitems*{5b58cfdc-29df-467f-98d3-d0a38c5a31d1}*SharedItemsImports = 13
 		F2BSharedWFP\F2BSharedWFP.projitems*{1e4fcb0d-e689-402a-b947-1624cc53d718}*SharedItemsImports = 13
-		F2BSharedWFP\F2BSharedWFP.projitems*{2209dc85-509b-4045-8f8c-80cc782a2f9b}*SharedItemsImports = 4
 		F2BShared\F2BShared.projitems*{2209dc85-509b-4045-8f8c-80cc782a2f9b}*SharedItemsImports = 4
+		F2BSharedWFP\F2BSharedWFP.projitems*{2209dc85-509b-4045-8f8c-80cc782a2f9b}*SharedItemsImports = 4
 		F2BShared\F2BShared.projitems*{a0705816-b0e0-41d0-a6a5-06f4c3098d21}*SharedItemsImports = 4
 		F2BShared\F2BShared.projitems*{daeb10e7-ddc6-40e8-ba06-3339b278f1b2}*SharedItemsImports = 4
-		F2BSharedWFP\F2BSharedWFP.projitems*{ea3e584f-eb31-40e0-8e13-6dcd2f7b05e8}*SharedItemsImports = 4
 		F2BShared\F2BShared.projitems*{ea3e584f-eb31-40e0-8e13-6dcd2f7b05e8}*SharedItemsImports = 4
+		F2BSharedWFP\F2BSharedWFP.projitems*{ea3e584f-eb31-40e0-8e13-6dcd2f7b05e8}*SharedItemsImports = 4
 		F2BShared\F2BShared.projitems*{9dee72cf-d681-4914-a0d0-338f2ab65810}*SharedItemsImports = 4
 	EndGlobalSection
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

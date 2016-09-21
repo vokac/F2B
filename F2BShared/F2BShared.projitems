@@ -13,5 +13,15 @@
     <Compile Include="$(MSBuildThisFileDirectory)Fw.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Limit.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Log.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)VCS.Designer.cs">
+      <DependentUpon>VCS.resx</DependentUpon>
+      <DesignTime>True</DesignTime>
+      <AutoGen>True</AutoGen>
+    </Compile>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="$(MSBuildThisFileDirectory)VCS.resx">
+      <LastGenOutput>VCS.Designer.cs</LastGenOutput>
+    </EmbeddedResource>
   </ItemGroup>
 </Project>

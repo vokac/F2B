@@ -7,7 +7,7 @@
     <ProjectGuid>{A0705816-B0E0-41D0-A6A5-06F4C3098D21}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>F2BQueue</RootNamespace>
+    <RootNamespace>F2B</RootNamespace>
     <AssemblyName>F2BQueue</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>

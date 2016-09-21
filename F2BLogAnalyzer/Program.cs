@@ -25,7 +25,11 @@ namespace F2B
         /// </summary>
         public static void Usage()
         {
-            Console.WriteLine("{0} command line arguments:", Process.GetCurrentProcess().ProcessName);
+            Version v = Assembly.GetExecutingAssembly().GetName().Version;
+            string pname = Process.GetCurrentProcess().ProcessName;
+            string vcinfo = string.Format("{0}[{1}] {2} ({3})", VCS.type, VCS.branch, VCS.commit, VCS.status);
+            Console.WriteLine("{0} version {1}.{2}.{3} (r{4}), {5}", pname, v.Major, v.Minor, v.Build, v.Revision, vcinfo);
+            Console.WriteLine("Command line arguments:");
             Console.WriteLine("  help                  show this help");
             Console.WriteLine("  examples              show command line examples");
             Console.WriteLine("  run                   execute service interactively");

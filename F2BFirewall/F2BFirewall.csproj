@@ -7,7 +7,7 @@
     <ProjectGuid>{1A68ED0A-1AEA-4B89-BC1B-8F19E3871B5B}</ProjectGuid>
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
-    <RootNamespace>F2BFirewall</RootNamespace>
+    <RootNamespace>F2B</RootNamespace>
     <AssemblyName>F2BFirewall</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
