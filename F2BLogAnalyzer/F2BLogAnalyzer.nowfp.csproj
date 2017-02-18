@@ -75,6 +75,7 @@
     <Compile Include="processors\Base.cs" />
     <Compile Include="processors\Bool.cs" />
     <Compile Include="processors\Case.cs" />
+    <Compile Include="processors\Cmd.cs" />
     <Compile Include="processors\EventData.cs" />
     <Compile Include="processors\Fail2ban.cs" />
     <Compile Include="processors\Fail2banAction.cs" />

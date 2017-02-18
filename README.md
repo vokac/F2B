@@ -1,4 +1,4 @@
-Fail2ban for Windows
+﻿Fail2ban for Windows
 ====================
 
 This project is an implementation inspired by unix http://www.fail2ban.org.
@@ -729,6 +729,21 @@ Send email created from predefined template
     <option key="recipient" value="f2b-admin@example.com,${address_group.Mail}"/>
     <option key="subject" value="[F2B] Fail2Ban[${Fail2ban.Last}] reached ${${Fail2ban.Last}.Treshold} treshold for ${${Fail2ban.Last}.Address}/${${Fail2ban.Last}.Prefix}"/>
     <option key="body" value="Mail body text."/>
+  </options>
+  <goto on_error_next="true"/>
+</processor>
+```
+
+#### Cmd
+
+Execute command with arguments expanded from use defined template string
+
+```xml
+<processor name="action_cmd" type="Cmd">
+  <description>Test cmd processor</description>
+  <options>
+    <option key="path" value="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE"/>
+    <option key="args" value="-File c:\F2B\test.ps1 ${Event.EventID}"/>
   </options>
   <goto on_error_next="true"/>
 </processor>
