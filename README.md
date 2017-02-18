@@ -24,13 +24,15 @@ Building from sources
 ```
   git clone https://github.com/vokac/F2B.git
 ```
-* load F2B.sln project file with Visual Studio 2015
-* Build -> Batch Build... -> Build
-* create "Release" build with F2BWFP compiled as 32bit dll
-  (if you want to build/use 64bit binaries you have to
-   disable "preferred 32bit" compilation of the C#
-   code and compile dll library as "Release|x64")
-
+* build with Visual Studio 2015 GUI
+  * load F2B.sln project file with Visual Studio 2015
+  * Build -> Batch Build... -> Build
+  * create "Release" build with F2BWFP compiled as 32bit dll
+  * for 64bit binaries disable "preferred 32bit" compilation
+    of the C# code and compile dll library as "Release|x64"
+* build with Visual Studio 2015 command line
+  * start MSBuild Command Prompt for VS2015
+  * execute `powershell -File build.ps1 [-config Release|Debug]`
 
 Installation
 ------------
