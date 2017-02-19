@@ -649,7 +649,10 @@ CREATE TABLE `f2b` (
 <processor name="logger_sql" type="LoggerSQL">
   <description>Log all selected events in MySQL database using ODBC</description>
   <options>
+    <!-- MySQL ODBC OPTION AUTO_RECONNECT(4194304) -->
     <option key="odbc" value="DRIVER={MySQL ODBC 3.51 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
+    <!-- MSSQL ODBC connection with autoreconnect enabled
+    <option key="odbc" value="DRIVER={ODBC Driver 11 for SQL Server};SERVER=server_that_supports_connection_resiliency;UID=username;PWD=secret;ConnectRetryCount=2;ConnectRetryInterval=1"/> -->
     <option key="table" value="f2b"/>
     <option key="columns" value="id,timestamp,hostname,input,selector,status,event,record,machine,created,provider,address,port,username,domain"/>
     <option key="column.timestamp" value="${Event.Timestamp}"/>
@@ -669,6 +672,9 @@ CREATE TABLE `f2b` (
     <option key="column.port" value="${Event.Port}"/>
     <option key="column.username" value="${Event.Username}"/>
     <option key="column.domain" value="${Event.Domain}"/>
+    <option key="timeout" value="15"/>
+    <option key="async" value="true"/>
+    <option key="async_max_queued" value="1000"/>
   </options>
 </processor>
 ```

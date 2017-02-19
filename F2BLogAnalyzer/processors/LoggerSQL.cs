@@ -1,11 +1,12 @@
 ﻿#region Imports
 using System;
 using System.Collections.Generic;
+using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Odbc;
 using System.IO;
 using System.Linq;
-using System.Text;
+using System.Threading;
 
 #endregion
 
@@ -18,7 +19,15 @@ namespace F2B.processors
         private string table;
         private IList<Tuple<string, string>> columns;
         private string insert;
-        OdbcConnection conn;
+        private int timeout = 15;
+        private OdbcConnection conn;
+        private bool stop;
+        private Object syncLock = new Object();
+        private bool async = true;
+        private int asyncMaxSize = 1000;
+        private BlockingCollection<IList<Tuple<string, string>>> asyncQueue;
+        private Thread asyncThread;
+        private CancellationTokenSource asyncCanceled;
         #endregion
 
         #region Constructors
@@ -72,65 +81,180 @@ namespace F2B.processors
             }
 
             conn = null;
+
+            if (config.Options["timeout"] != null)
+            {
+                timeout = int.Parse(config.Options["timeout"].Value);
+            }
+
+            if (config.Options["async"] != null)
+            {
+                async = bool.Parse(config.Options["async"].Value);
+            }
+            if (config.Options["async_max_queued"] != null)
+            {
+                asyncMaxSize = int.Parse(config.Options["async_max_queued"].Value);
+            }
         }
         #endregion
+
+        private void AsyncSQL()
+        {
+            while (!asyncQueue.IsCompleted)
+            {
+                try
+                {
+                    IList<Tuple<string, string>> colvals;
+                    if (asyncQueue.TryTake(out colvals, -1, asyncCanceled.Token))
+                    {
+                        if (conn.State != ConnectionState.Open)
+                        {
+                            OpenSQL();
+                        }
+                        SaveSQL(colvals);
+                    }
+                }
+                catch (OperationCanceledException ex)
+                {
+                    Log.Info("Canceled SQL async take (queue size: " + asyncQueue.Count + ")");
+                    break;
+                }
+                catch (Exception ex)
+                {
+                    Log.Error("Execption in SQL async thread: " + ex.Message);
+                    break;
+                }
+            }
+        }
+
+        private void OpenSQL(int retry = -1)
+        {
+            int cnt = 0;
+
+            while (!stop && retry != 0)
+            {
+                if (cnt > 1)
+                {
+                    // don't retry connection immediately after last two failures
+                    Thread.Sleep(Math.Min(cnt*1000, 10000));
+                }
+
+                try
+                {
+                    if (conn.State != ConnectionState.Open)
+                    {
+                        Log.Info("Opening database connection (retry: " + cnt + ")");
+                        // Open can hangs for ~ 140s eventhought connection timeout
+                        // is just 15s and Abort() even throws exception ... I'm not
+                        // sure how to deal with this situation - just let the thread
+                        // running without clean exit...
+                        conn.Open();
+                        //conn.OpenAsync(asyncCanceled.Token);
+                     }
+                }
+                catch (OdbcException ex)
+                {
+                    Log.Error("ODBC Exception (unable to connect): " + ex.Message);
+
+                    if (retry > 0) retry--;
+                }
+
+                cnt++;
+            }
+        }
+
+        private void SaveSQL(IList<Tuple<string, string>> colvals)
+        {
+            try {
+                using (OdbcCommand cmd = new OdbcCommand(insert, conn))
+                {
+                    foreach (var item in colvals)
+                    {
+                        cmd.Parameters.Add(new OdbcParameter(item.Item1, item.Item2));
+                    }
+
+                    cmd.ExecuteNonQuery();
+                }
+            }
+            catch (InvalidOperationException ex)
+            {
+                Log.Warn("ODBC Exception (invalid operation): " + ex.Message);
+            }
+        }
 
         #region Override
         public override void Start()
         {
-            conn = new OdbcConnection(odbc);
+            stop = false;
 
-            try
+            conn = new OdbcConnection(odbc);
+            conn.ConnectionTimeout = timeout;
+
+            if (async)
             {
-                conn.Open();
-            }
-            catch (OdbcException ex)
-            {
-                Log.Error("unable to connect to database: " + ex.Message);
+                asyncQueue = new BlockingCollection<IList<Tuple<string, string>>>(asyncMaxSize);
+                asyncCanceled = new CancellationTokenSource();
+                asyncThread = new Thread(new ThreadStart(AsyncSQL));
+                asyncThread.IsBackground = true; // NOTE: necessary for fast shutdown in case conn.Open hangs
+                asyncThread.Start();
             }
         }
 
         public override void Stop()
         {
-            if (conn == null && conn.State != ConnectionState.Closed)
+            stop = true;
+
+            if (async)
             {
-                conn.Close();
+                Log.Info("Stop SQL async thread");
+                asyncQueue.CompleteAdding();
+                asyncCanceled.Cancel();
+                asyncThread.Join(1000); // abort thread after 1s
+                // skip Abort because it hangs and shutdown can take ~ 140s
+                //if (asyncThread.IsAlive)
+                //{
+                //    Log.Info("Aborting SQL async thread");
+                //    // this call hangs on unfinished conn.Open
+                //    asyncThread.Abort();
+                //}
+            }
+
+            lock (syncLock)
+            {
+                if (conn != null && conn.State != ConnectionState.Closed)
+                {
+                    conn.Close();
+                }
             }
         }
 
-
         public override string Execute(EventEntry evtlog)
         {
-            int retry = 1;
+            ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
 
-            while (retry >= 0)
+            IList<Tuple<string, string>> colvals = new List<Tuple<string, string>>(columns.Count);
+            foreach (var item in columns)
             {
-                try
+                colvals.Add(Tuple.Create(item.Item1, tpl.Apply(item.Item2)));
+            }
+
+            if (!async)
+            {
+                lock (syncLock)
                 {
-                    ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
-                    using (OdbcCommand cmd = new OdbcCommand(insert, conn))
+                    if (conn.State != ConnectionState.Open)
                     {
-                        foreach (var item in columns)
-                        {
-                            cmd.Parameters.Add(new OdbcParameter(item.Item1, tpl.Apply(item.Item2)));
-                        }
-
-                        cmd.ExecuteNonQuery();
+                        OpenSQL(1);
                     }
-
-                    break;
+                    SaveSQL(colvals);
                 }
-                catch (InvalidOperationException ex)
+            }
+            else
+            {
+                if (!asyncQueue.TryAdd(colvals))
                 {
-                    Log.Warn("ODBC Exception (trying to reconnect): " + ex.Message);
-
-                    if (conn.State != ConnectionState.Closed)
-                    {
-                        conn.Close();
-                    }
-                    conn.Open();
-
-                    retry--;
+                    Log.Warn("unable to add new data to full queue (queue size: " + asyncQueue.Count + ")");
+                    // we could store data into a SQL file that could be later inserted in DB
                 }
             }
 
@@ -148,6 +272,8 @@ namespace F2B.processors
             {
                 output.WriteLine("config column " + item.Item1 + ": " + item.Item2);
             }
+            output.WriteLine("config async db connection: " + async);
+            output.WriteLine("config async max queue size: " + asyncMaxSize);
         }
 #endif
         #endregion
