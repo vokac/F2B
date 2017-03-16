@@ -295,7 +295,7 @@ messages using "Suppress" element.
       <regex id="Username" type="data" xpath="Event/EventData/Data[@Name='TargetUserName']"/>
       <regex id="Domain" type="data" xpath="Event/EventData/Data[@Name='TargetDomainName']"/>
     </regexes>
-	<!-- User defined additional event properties for this input/selector -->
+    <!-- User defined additional event properties for this input/selector -->
     <evtdts>
       <evtdata name="Event.Login" apply="before">failed</evtdata>
     </evtdts>
@@ -512,6 +512,8 @@ address range.
 <processor name="login" type="Login">
   <description>Skip events that correspond successfull login</description>
   <options>
+    <option key="login" value="Event.Login"/>
+    <option key="address" value="Event.Address"/>
     <option key="maxsize" value="100000"/>
     <option key="findtime" value="86400"/>
     <option key="count" value="24"/>
@@ -540,6 +542,8 @@ for your own address range).
     <range network="2001:db8::/32"/>
   </ranges>
   <options>
+    <!-- address comes usually directly from input parsers -->
+    <option key="address" value="Event.Address"/>
     <!-- create ${whitelist.Mail} variable on successful search -->
     <option key="mail" value="whitelist-admin@example.com"/>
   </options>
@@ -557,6 +561,7 @@ reconfigured with updated data.
 <processor name="important_clients" type="RangeFile">
   <description>Read address ranges from text file</description>
   <options>
+    <option key="address" value="Event.Address"/>
     <option key="filename" value="c:\F2B\important_clients.ranges"/>
   </options>
   <goto success="last"/>
@@ -607,13 +612,15 @@ different with respect to normal failed login due to bad password.
 <processor name="if_ad_account_exists" type="Account">
   <description>Filter log events for non-existing accounts</description>
   <options>
+    <!-- username comes usually directly from input parsers -->
+    <option key="username" value="Event.Username"/>
     <!-- data "source" is reference to existing "account" name -->
     <option key="account" value="ad_accounts"/>
-    <option key="mode" value="exists"/>
+    <option key="status" value="exists"/>
     <!--
-    <option key="mode" value="disabled"/>
-    <option key="mode" value="locked"/>
-    <option key="mode" value="disabled|locked"/>
+    <option key="status" value="disabled"/>
+    <option key="status" value="locked"/>
+    <option key="status" value="disabled|locked"/>
     -->
   </options>
   <goto success="ad_account_exists" failure="not_ad_account_exists" error="ad_account_error"/>
@@ -744,6 +751,8 @@ Provides fail to ban functionality.
 <processor name="fail2ban" type="Fail2ban">
   <description>Test fail2ban processor</description>
   <options>
+    <!-- address comes usually directly from input parsers -->
+    <option key="address" value="Event.Address"/>
     <option key="state" value="c:\F2B\fail2ban.state"/>
     <option key="findtime" value="600"/>
     <option key="ipv4_prefix" value="32"/>
