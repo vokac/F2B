@@ -17,6 +17,7 @@ namespace F2B.processors
     public class AccountProcessor : BoolProcessor
     {
         #region Fields
+        private string username;
         private IAccount account;
         private AccountStatus status;
         #endregion
@@ -25,6 +26,16 @@ namespace F2B.processors
         public AccountProcessor(ProcessorElement config, Service service)
             : base(config, service)
         {
+            if (config.Options["username"] == null || string.IsNullOrEmpty(config.Options["username"].Value))
+            {
+                throw new Exception(GetType() + "[" + Name
+                    + "]: Undefined or empty username attribute");
+            }
+            else
+            {
+                username = config.Options["username"].Value;
+            }
+
             if (config.Options["account"] != null)
             {
                 account = AccountManager.Get(config.Options["account"].Value);
@@ -55,12 +66,14 @@ namespace F2B.processors
         #region Override
         public override string Execute(EventEntry evtlog)
         {
-            if (evtlog.Username == null)
+            string user = evtlog.GetProcData<string>(username);
+
+            if (string.IsNullOrEmpty(user))
             {
-                return goto_failure;
+                return goto_error;
             }
 
-            if (account.Exists(evtlog.Username, status))
+            if (account.Exists(user, status))
             {
                 return goto_success;
             }
@@ -75,6 +88,7 @@ namespace F2B.processors
         {
             base.Debug(output);
 
+            output.WriteLine("config username: " + username);
             output.WriteLine("config account: " + account);
             output.WriteLine("config status: " + status);
         }

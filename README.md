@@ -288,11 +288,17 @@ messages using "Suppress" element.
         </Suppress>
       ]]>
     </query>
-    <!-- Select event XML element with XPath and parse data using regexp -->
-    <address xpath="Event/EventData/Data[@Name='IpAddress']"/>
-    <port xpath="Event/EventData/Data[@Name='IpPort']"/>
-    <username xpath="Event/EventData/Data[@Name='TargetUserName']"/>
-    <domain xpath="Event/EventData/Data[@Name='TargetDomainName']"/>
+    <!-- Select event XML element with XPath and use its text content -->
+    <regexes>
+      <regex id="Address" type="data" xpath="Event/EventData/Data[@Name='IpAddress']"/>
+      <regex id="Port" type="data" xpath="Event/EventData/Data[@Name='IpPort']"/>
+      <regex id="Username" type="data" xpath="Event/EventData/Data[@Name='TargetUserName']"/>
+      <regex id="Domain" type="data" xpath="Event/EventData/Data[@Name='TargetDomainName']"/>
+    </regexes>
+	<!-- User defined additional event properties for this input/selector -->
+    <evtdts>
+      <evtdata name="Event.Login" apply="before">failed</evtdata>
+    </evtdts>
   </selector>
 </selectors>
 ```
@@ -301,10 +307,16 @@ Every selector element can use these attributes
 * `name` - _unique_ selector name
 * `input_name` - event input name (input_name or input type must be defined)
 * `input_type` - event input type (input_name or input type must be defined)
-* `login` - optional event kind unknown, success, fail
-  (default: unknown, autodetected for eventlog using keyword)
 * `processor` - processor name used for selected events
   (default: first processor defined in `<processors>` section)
+
+Each selector can also contain user defined additional event properties
+defined in evtdts subsection. These properties can be added unconditionally
+"before" or "after" extracting event data using regexes or only in case
+regex with given ID matches processed data (evtdata attribute apply must
+be set to "match.ID" where ID corresponds to the regex ID attribute).
+You can set overwrite attribute to force new value with same Event."NAME"
+to overwrite existing data that was set earlier.
 
 Currently two input types (EventLog, FileLog) are supported by F2B selector
 implementation:
@@ -316,43 +328,88 @@ implementation:
   You can use mmc Event Viewer snap-in to visually build required query with
   help of "Create Custom View" -> "Define your filter" -> "XML".
 
-  Client IP address, port, username and domain can be extracted from eventlog
-  data using XPath + regex. Definition for IP address is required and must
-  match valid IPv4/IPv6 address.
+  Client IP address, port, username, ... can be extracted from eventlog
+  data using XPath + regex. It is necessary to extract valid IPv4/IPv6
+  address for several processors (including `Range`, `Fail2ban`, ...).
+
+  regex attributes:
+  * id - regex identification (can be used to add evtdata for matched regexes)
+  * type - drives what to do in case regex match/fail to match event data
+    * data - parse data using regex
+    * match - use event if matches regex
+    * ignore - ignore event if matches regex (eventhough it matched some regex)
+  * xpath - used only by EventLog to apply regex just on selected data
+  * "value" - regex with named groups that provides Event."GROUP_NAME"
+    data empty value means new Event."ID" with full data from given xpath
 
 * Flat log file configuration (`input_type="FileLog"`):
 
   List of regular expressions are used to match log lines and extract required
-  data (e.g. IP address). There are several types of regular expression
-  - ignore - matched line is completely ignored
-  - fail - matched line means login failure
-  - success - matched line means login success
+  data (e.g. IP address). Selection is done by regex There are several types of regular expression
+  - match .... matched line and its data preselected for further processing
+  - ignore ... matched line is completely ignored (eventhough it was previously matched)
+  - data ..... just use matched named regex group as Event.group_name properties
 
   ```xml
     ...
     <!-- Selector for ssh log file -->
     <selector name="secure_log" input_name="ssh">
-      <regexps>
-        <regexp type="fail"><![CDATA[^(?<time_b>...) (?<time_e>..) (?<time_H>..):(?<time_M>..):(?<time_S>..) (?<hostname>\S+) sshd\[\d+\]: Failed password for (?<user>.*) from (?<address>\S+) port (?<port>\d+) ssh2$]]></regexp>
-      </regexps>
+      <regexes>
+        <regex id="failline" type="match"><![CDATA[^(?<time_b>...) (?<time_e>..) (?<time_H>..):(?<time_M>..):(?<time_S>..) (?<hostname>\S+) sshd\[\d+\]: Failed password for (?<user>.*) from (?<address>\S+) port (?<port>\d+) ssh2$]]></regex>
+      </regexes>
+      <evtdts>
+        <evtdata name="Event.Login">failed</evtdata>
+      </evtdts>
     </selector>
 	...
   ```
 
-Special selector defined below this section can be used for
-debugging and performance tests. It catches events logged
-with `LogEvents.exe`. This application can be used to inject
-arbitrary data in our processor chain (see `LogEvents.exe`
+For debugging it is possible to log special event that trigers
+dump of current internal state of all F2B processors into text
+file. This event can be generated by `LogEvents.exe dump` and
+config file of the F2BLogAnalyzer must contain following selector
+to be able to capture these debug events.
+
+```xml
+  ...
+  <!-- Test selector for eventlog data produced by LogEvents.exe -->
+  <selector name="dump" input_type="EventLog" processor="last">
+    <query>
+	  <![CDATA[
+	    <Select Path="Application">
+		  *[System[(Provider/@Name='F2BDump') and (EventID=0) and (Level=2)]]
+		</Select>
+      ]]>
+	</query>
+  </selector>
+  ...
+```
+
+Special selector defined below can be used for performance tests.
+It catches events logged with `LogEvents.exe repeat ...`. With
+user defined option it is possible to inject arbitrary log data
+that can be used to test full processor chain (see `LogEvents.exe`
 command line options).
 
 ```xml
   ...
   <!-- Test selector for eventlog data produced by LogEvents.exe -->
   <selector name="test" input_type="EventLog" processor="first">
-    <query><![CDATA[<Select Path="Application">*[System[(Provider/@Name='F2B test log event') and (EventID=1)]]</Select>]]></query>
-    <address xpath="Event/EventData/Data"><![CDATA[(?<username>.+)@(?<address>.+):(?<port>.+)]]></address>
-    <port xpath="Event/EventData/Data"><![CDATA[(?<username>.+)@(?<address>.+):(?<port>.+)]]></port>
-    <username xpath="Event/EventData/Data"><![CDATA[(?<username>.+)@(?<address>.+):(?<port>.+)]]></username>
+    <query>
+	  <![CDATA[
+	    <Select Path="Application">
+		  *[System[(Provider/@Name='F2BBench') and (EventID=0) and (Level=2)]]
+		</Select>
+	  ]]>
+	</query>
+    <regexps>
+      <regexp id="Benchmark" type="data" xpath="Event/EventData/Data">
+	    <![CDATA[(?<Username>.+)@(?<Address>.+):(?<Port>.+)]]>
+	  </regexp>
+    </regexps>
+    <evtdts>
+      <evtdata name="Event.Login" apply="before">failed</evtdata>
+    </evtdts>
   </selector>
   ...
 ```

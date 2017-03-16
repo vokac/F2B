@@ -29,10 +29,15 @@
             </Suppress>
           ]]>
         </query>
-        <address xpath="Event/EventData/Data[@Name='IpAddress']"/>
-        <port xpath="Event/EventData/Data[@Name='IpPort']"/>
-        <username xpath="Event/EventData/Data[@Name='TargetUserName']"/>
-        <domain xpath="Event/EventData/Data[@Name='TargetDomainName']"/>
+        <regexes>
+          <regex id="Address" type="data" xpath="Event/EventData/Data[@Name='IpAddress']"/>
+          <regex id="Port" type="data" xpath="Event/EventData/Data[@Name='IpPort']"/>
+          <regex id="Username" type="data" xpath="Event/EventData/Data[@Name='TargetUserName']"/>
+          <regex id="Domain" type="data" xpath="Event/EventData/Data[@Name='TargetDomainName']"/>
+        </regexes>
+        <evtdts>
+          <evtdata name="Event.Login" apply="before">failed</evtdata>
+        </evtdts>
       </selector>
     </selectors>
 

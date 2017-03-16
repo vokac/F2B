@@ -12,6 +12,7 @@ namespace F2B.processors
     public class Fail2banProcessor : BaseProcessor, IThreadSafeProcessor
     {
         #region Fields
+        private string address;
         private string stateFile;
         private long findtime;
         private int ipv4_prefix;
@@ -614,6 +615,7 @@ namespace F2B.processors
             : base(config, service)
         {
             // default values
+            address = "Event.Address";
             stateFile = null;
             findtime = 600;
             ipv4_prefix = 32;
@@ -627,6 +629,11 @@ namespace F2B.processors
             history_rrd_repeat = 2;
 
             tresholds = new List<Fail2banProcessor.Treshold>();
+
+            if (config.Options["address"] != null)
+            {
+                address = config.Options["address"].Value;
+            }
 
             // set values from config file
             if (config.Options["state"] != null)
@@ -946,10 +953,32 @@ namespace F2B.processors
 
         public override string Execute(EventEntry evtlog)
         {
+            string strAddress = evtlog.GetProcData<string>(address);
+            if (string.IsNullOrEmpty(strAddress))
+            {
+                Log.Info("Fail2ban[" + Name
+                    + "]: empty address attribute: " + address);
+
+                return goto_error;
+            }
+
+            IPAddress addr = null;
+            try
+            {
+                addr = IPAddress.Parse(strAddress.Trim()).MapToIPv6();
+            }
+            catch (FormatException ex)
+            {
+                Log.Info("Fail2ban[" + Name
+                    + "]: invalid address " + address
+                    + "[" + strAddress + "]: " + ex.Message);
+
+                return goto_error;
+            }
+
             // get fail2ban network address for given IP and prefix
-            IPAddress addr = evtlog.Address;
             int prefix = ipv6_prefix;
-            if (evtlog.Address.IsIPv4MappedToIPv6)
+            if (addr.IsIPv4MappedToIPv6)
             {
                 prefix = ipv4_prefix;
                 if (prefix <= 32)
@@ -959,7 +988,7 @@ namespace F2B.processors
             }
             if (prefix != 128)
             {
-                addr = Utils.GetNetwork(evtlog.Address, prefix);
+                addr = Utils.GetNetwork(addr, prefix);
             }
 
             // fix log event that came from future(?!), _we_ have correct time!
@@ -1064,6 +1093,7 @@ namespace F2B.processors
         {
             base.Debug(output);
 
+            output.WriteLine("config address: " + address);
             output.WriteLine("config findtime: " + findtime);
             output.WriteLine("config ipv4_prefix: " + ipv4_prefix);
             output.WriteLine("config ipv6_prefix: " + ipv6_prefix);

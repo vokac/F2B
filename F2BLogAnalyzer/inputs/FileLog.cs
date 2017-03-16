@@ -16,6 +16,10 @@ namespace F2B.inputs
         private int interval;
         private Regex[] match;
         private Regex[] ignore;
+        private Tuple<string, Regex>[] data;
+        private IList<EventDataElement> evtdata_before;
+        private IDictionary<string, EventDataElement> evtdata_match;
+        private IList<EventDataElement> evtdata_after;
 
         private bool onlyWatcher;
         private bool active;
@@ -32,6 +36,9 @@ namespace F2B.inputs
         public FileLogInput(InputElement input, SelectorElement selector, EventQueue equeue)
             : base(input, selector, equeue)
         {
+            Log.Info("input[" + InputName + "]/selector[" + SelectorName
+                + "] creating FileLogInput");
+
             filename = input.LogPath;
             interval = input.Interval;
             onlyWatcher = false;
@@ -39,18 +46,21 @@ namespace F2B.inputs
 
             List<Regex> tmpMatch = new List<Regex>();
             List<Regex> tmpIgnore = new List<Regex>();
-            foreach (RegexpElement ree in selector.Regexps)
+            List<Tuple<string, Regex>> tmpData = new List<Tuple<string, Regex>>();
+            foreach (RegexElement ree in selector.Regexes)
             {
                 Regex re = new Regex(ree.Value, RegexOptions.Singleline);
                 switch (ree.Type)
                 {
                     case "match": tmpMatch.Add(re); break;
                     case "ignore": tmpIgnore.Add(re); break;
+                    case "data": tmpData.Add(new Tuple<string, Regex>(ree.Id, re)); break;
                     default: throw new Exception("unknown regex type: " + ree.Type);
                 }
             }
             match = tmpMatch.ToArray();
-            ignore = tmpMatch.ToArray();
+            ignore = tmpIgnore.ToArray();
+            data = tmpData.ToArray();
 
             if (interval <= 0)
             {
@@ -90,6 +100,32 @@ namespace F2B.inputs
             {
                 // signal used to interupt waiting line processing thread
                 wait = new AutoResetEvent(false);
+            }
+
+            // user defined event properties
+            evtdata_before = new List<EventDataElement>();
+            evtdata_match = new Dictionary<string, EventDataElement>();
+            evtdata_after = new List<EventDataElement>();
+            foreach (EventDataElement item in selector.EventData)
+            {
+                if (item.Apply == "before")
+                {
+                    evtdata_before.Add(item);
+                }
+                else if (item.Apply == "after")
+                {
+                    evtdata_after.Add(item);
+                }
+                else if (item.Apply.StartsWith("match."))
+                {
+                    evtdata_match[item.Apply.Substring("match.".Length)] = item;
+                }
+                else
+                {
+                    Log.Warn("Invalid input[" + InputName + "]/selector[" + SelectorName
+                        + "] event data \"" + item.Name + "\" attribute apply \""
+                        + item.Apply + "\": ignoring this item");
+                }
             }
         }
 
@@ -288,7 +324,7 @@ namespace F2B.inputs
                 string line;
                 while (active && (line = reader.ReadLine()) != null)
                 {
-                    ProcessLine(line);
+                    ProcessLine(line, reader.BaseStream.Position);
                 }
 
                 //update the last max offset
@@ -303,7 +339,7 @@ namespace F2B.inputs
             }
         }
 
-        private void ProcessLine(string line)
+        private void ProcessLine(string line, long position)
         {
             Match m = null;
             for (int i = 0; i < match.Length; i++)
@@ -346,10 +382,6 @@ namespace F2B.inputs
             string strTime_M = GetGroupData(m, "time_M");
             string strTime_S = GetGroupData(m, "time_S");
             string strHostname = GetGroupData(m, "hostname");
-            string strAddress = GetGroupData(m, "address");
-            string strPort = GetGroupData(m, "port");
-            string strUsername = GetGroupData(m, "username");
-            string strDomain = GetGroupData(m, "domain");
 
             // simple/ugly datetime parsing
             DateTime created = DateTime.Now;
@@ -460,35 +492,101 @@ namespace F2B.inputs
                 strHostname = Environment.MachineName;
             }
 
-            IPAddress address = null;
-            try
+            EventEntry evt = new EventEntry(created, strHostname, this, line);
+            // NOTE: we should get rid of these default values, because reasonable
+            // defaults can be set in place where we really use these varialbes
+            evt.SetProcData("Event.EventId", "0");
+            evt.SetProcData("Event.RecordId", "0");
+            evt.SetProcData("Event.MachineName", "");
+            evt.SetProcData("Event.TimeCreated", "0");
+            evt.SetProcData("Event.ProviderName", "");
+            evt.SetProcData("Event.ProcessId", "");
+            evt.SetProcData("Event.LogName", filename);
+            evt.SetProcData("Event.LogLevel", "Unknown");
+
+            foreach (EventDataElement item in evtdata_before)
             {
-                address = IPAddress.Parse(strAddress.Trim()).MapToIPv6();
+                if (item.Overwrite || !evt.HasProcData(item.Name))
+                {
+                    evt.SetProcData(item.Name, item.Value);
+                }
             }
-            catch (FormatException ex)
+            foreach (Tuple<string, Regex> idregex in data)
             {
-                Log.Info("Received EventLog message from " + InputName
-                    + "/" + SelectorName + ", invalid IP address format: "
-                    + strAddress.Trim() + " (" + ex.Message + ")");
-                return;
+                Regex regex = idregex.Item2;
+                m = regex.Match(line);
+                if (!m.Success)
+                {
+                    continue;
+                }
+
+                foreach (int groupNumber in regex.GetGroupNumbers())
+                {
+                    Group regexGroup = m.Groups[groupNumber];
+
+                    if (regexGroup == null)
+                    {
+                        continue;
+                    }
+                    if (!regexGroup.Success)
+                    {
+                        continue;
+                    }
+                    if (regex.GroupNameFromNumber(groupNumber) == groupNumber.ToString())
+                    {
+                        continue;
+                    }
+
+                    EventDataElement ede = null;
+                    evtdata_match.TryGetValue("match." + idregex.Item1, out ede);
+                    if (ede == null)
+                    {
+                        continue;
+                    }
+
+                    string groupName = "Event." + regex.GroupNameFromNumber(groupNumber);
+                    string groupValue = "";
+                    if (regexGroup.Value != null)
+                    {
+                        groupValue = regexGroup.Value;
+                    }
+
+                    if (ede.Overwrite || !evt.HasProcData(groupName))
+                    {
+                        evt.SetProcData(groupName, groupValue);
+                    }
+                }
+
+                foreach (Group regexGroup in m.Groups)
+                {
+                    if (regexGroup == null || !regexGroup.Success || string.IsNullOrWhiteSpace(regexGroup.Value))
+                    {
+                        //Log.Info("Received EventLog message from " + InputName
+                        //    + "/" + SelectorName + ", regex \"" + regex + "\"");
+                        continue;
+                    }
+
+                    EventDataElement ede = null;
+                    evtdata_match.TryGetValue("match." + idregex.Item1, out ede);
+                    if (ede != null)
+                    {
+                        if (ede.Overwrite || !evt.HasProcData(regexGroup.ToString()))
+                        {
+                            evt.SetProcData(regexGroup.ToString(), regexGroup.Value);
+                        }
+                    }
+                }
+            }
+            foreach (EventDataElement item in evtdata_after)
+            {
+                if (item.Overwrite || !evt.HasProcData(item.Name))
+                {
+                    evt.SetProcData(item.Name, item.Value);
+                }
             }
 
-            int port = -1;
-            try
-            {
-                port = int.Parse(strPort);
-            }
-            catch (Exception)
-            {
-                // intentionally skip parser exeption for optional parameter
-            }
-
-            EventEntry evt = new EventEntry(created, strHostname,
-                address, port, strUsername, strDomain, Login, this, line);
-
-            Log.Info("FileLog[" + evt.Id + "@" + Name + "] queued message "
-                + strUsername + "@" + address + ":" + port + " from " + strHostname
-                + " status " + Login);
+            Log.Info("EventLog[" + position + "->" + evt.Id + "@"
+                + Name + "] queued message from " + strHostname);
 
             equeue.Produce(evt, Processor);
         }

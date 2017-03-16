@@ -5,10 +5,15 @@ using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.Eventing.Reader;
 using System.IO;
+using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Timers;
+using System.Xml;
+using System.Xml.Linq;
+using System.Xml.XPath;
 #endregion
 
 namespace F2B
@@ -26,11 +31,6 @@ namespace F2B
         long Id { get; }
         DateTime Created { get; }
         string Hostname { get; }
-        IPAddress Address { get; }
-        int Port { get; }
-        string Username { get; }
-        string Domain { get; }
-        LoginStatus Login { get; }
         BaseInput Input { get; }
         object LogData { get; }
         IReadOnlyDictionary<string, object> ProcData { get; }
@@ -46,11 +46,6 @@ namespace F2B
         public long Id { get; private set; }
         public DateTime Created { get; set; }
         public string Hostname { get; set; }
-        public IPAddress Address { get; set; }
-        public int Port { get; set; }
-        public string Username { get; set; }
-        public string Domain { get; set; }
-        public LoginStatus Login { get; set; }
         public BaseInput Input { get; set; }
         public object LogData { get; set; }
         public IReadOnlyDictionary<string, object> ProcData {
@@ -66,23 +61,28 @@ namespace F2B
         #endregion
 
         #region Constructors
-        public EventEntry(DateTime created, string hostname,
-            IPAddress address, int port, string username, string domain,
-            LoginStatus login, BaseInput input, object ldata)
+        public EventEntry(DateTime created, string hostname, BaseInput input, object ldata)
         {
             Id = Interlocked.Increment(ref _counter);
 
             Created = created;
             Hostname = hostname;
-            Address = address;
-            Port = port;
-            Username = username;
-            Domain = domain;
-            Login = login;
             Input = input;
             LogData = ldata;
 
             _procData = new Dictionary<string, object>();
+            // global data
+            _procData["Environment.Now"] = DateTime.Now.Ticks.ToString();
+            _procData["Environment.DateTime"] = DateTime.Now.ToString();
+            _procData["Environment.MachineName"] = System.Environment.MachineName;
+            // input data
+            _procData["Event.Id"] = Id.ToString();
+            _procData["Event.Timestamp"] = Created.Ticks.ToString();
+            _procData["Event.Hostname"] = (Hostname != null ? Hostname : "");
+            _procData["Event.Type"] = Input.InputType;
+            _procData["Event.Input"] = Input.InputName;
+            _procData["Event.Selector"] = Input.SelectorName;
+            _procData["Event.Processor"] = Input.Processor;
         }
 
         // copy constructor with individual ProcData
@@ -92,11 +92,6 @@ namespace F2B
 
             Created = evt.Created;
             Hostname = evt.Hostname;
-            Address = evt.Address;
-            Port = evt.Port;
-            Username = evt.Username;
-            Domain = evt.Domain;
-            Login = evt.Login;
             Input = evt.Input;
             LogData = evt.LogData;
 
@@ -519,20 +514,33 @@ namespace F2B
                 }
 
 #if DEBUG
+                // evtlog can become null only if F2BLogAnalyzer runs in interactive
+                // mode and user requested dump of its current state by pressing "d" key
                 bool debug = evtlog == null;
                 string debugFile = procName;
 
-                if (!debug)
+                if (!debug && (evtlog.LogData.GetType() == typeof(EventRecordWrittenEventArgs) || evtlog.LogData.GetType().IsSubclassOf(typeof(EventRecordWrittenEventArgs))))
                 {
-                    // special event from 0.0.0.0 or :: with port 12345 is treated
-                    // as requiest to dump F2B internal state that can be used for debug
-                    if (evtlog.Port == 12345 && (evtlog.Address.Equals(IPAddress.Any.MapToIPv6()) || evtlog.Address.Equals(IPAddress.IPv6Any)))
+                    EventRecordWrittenEventArgs evtarg = evtlog.LogData as EventRecordWrittenEventArgs;
+                    EventRecord evtrec = evtarg.EventRecord;
+
+                    if (evtrec.ProviderName == "F2BDump")
                     {
+                        // special windows EventLog event that can be used to request state dump
+                        // (to be able to receive this event you must add selector for F2BDump events)
                         debug = true;
                         debugFile = @"c:\F2B\dump.txt";
-                        if (!string.IsNullOrEmpty(evtlog.Username))
+
+                        // process event XML data
+                        string xmlString = evtrec.ToXml();
+                        var doc = XDocument.Parse(xmlString);
+                        var namespaces = new XmlNamespaceManager(new NameTable());
+                        var ns = doc.Root.GetDefaultNamespace();
+                        namespaces.AddNamespace("ns", ns.NamespaceName);
+
+                        foreach (var element in doc.XPathSelectElements("/ns:Event/ns:EventData/ns:Data", namespaces))
                         {
-                            debugFile = evtlog.Username;
+                            debugFile = element.Value;
                         }
                     }
                 }
@@ -580,7 +588,6 @@ namespace F2B
 
                 logpfx = string.Format("Consuming({0}/{1}) event[{2}@{3}]: ",
                     ethread.Number, tnevts, evtlog.Id, evtlog.Input.Name);
-                Log.Info(logpfx + evtlog.Address + ", " + evtlog.Username);
 
                 BaseProcessor proc = null;
                 if (string.IsNullOrEmpty(procName))

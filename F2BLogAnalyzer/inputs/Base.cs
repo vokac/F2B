@@ -22,7 +22,6 @@ namespace F2B.inputs
         {
             get { return string.Concat(InputName, "/", SelectorName); }
         }
-        public LoginStatus Login { get; private set; }
         #endregion
 
         #region Constructors
@@ -33,13 +32,6 @@ namespace F2B.inputs
             InputType = input.Type;
             SelectorName = selector.Name;
             Processor = selector.Processor;
-
-            switch (selector.Login)
-            {
-                case "success": Login = LoginStatus.SUCCESS; break;
-                case "failure": Login = LoginStatus.FAILURE; break;
-                default: Login = LoginStatus.UNKNOWN; break;
-            }
 
             equeue = queue;
         }

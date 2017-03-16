@@ -1,13 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Diagnostics;
-using System.Diagnostics.Eventing.Reader;
-using System.Linq;
 using System.Net;
 using System.Text;
 using System.Text.RegularExpressions;
-using System.Threading.Tasks;
-using System.Xml.Linq;
 
 namespace F2B
 {
@@ -297,7 +293,7 @@ namespace F2B
 
     class ProcessorEventStringTemplate
     {
-        private IDictionary<string, string> repl;
+        private IReadOnlyDictionary<string, object> repl;
 
         private static Dictionary<string, string> escapeMapping = new Dictionary<string, string>()
         {
@@ -317,75 +313,7 @@ namespace F2B
 
         public ProcessorEventStringTemplate(EventEntry evtent)
         {
-            repl = new Dictionary<string, string>(20 + evtent.ProcData.Count);
-
-            // Environment
-            repl["Environment.Now"] = DateTime.Now.Ticks.ToString();
-            repl["Environment.DateTime"] = DateTime.Now.ToString();
-            repl["Environment.MachineName"] = System.Environment.MachineName;
-
-            // F2B Event
-            repl["Event.Id"] = evtent.Id.ToString();
-            repl["Event.Timestamp"] = evtent.Created.Ticks.ToString();
-            repl["Event.Hostname"] = (evtent.Hostname != null ? evtent.Hostname : "");
-            repl["Event.Type"] = evtent.Input.InputType;
-            repl["Event.Input"] = evtent.Input.InputName;
-            repl["Event.Selector"] = evtent.Input.SelectorName;
-            repl["Event.Address"] = evtent.Address.ToString();
-            repl["Event.Port"] = evtent.Port.ToString();
-            repl["Event.Username"] = (evtent.Username != null ? evtent.Username : "");
-            repl["Event.Domain"] = (evtent.Domain != null ? evtent.Domain : "");
-            repl["Event.Login"] = evtent.Login.ToString();
-
-            // Event
-            if (evtent.LogData.GetType() == typeof(EventRecordWrittenEventArgs)
-                || evtent.LogData.GetType().IsSubclassOf(typeof(EventRecordWrittenEventArgs)))
-            {
-                EventRecordWrittenEventArgs evtarg = evtent.LogData as EventRecordWrittenEventArgs;
-                EventRecord evtrec = evtarg.EventRecord;
-                repl["Event.EventId"] = evtrec.Id.ToString();
-                repl["Event.RecordId"] = evtrec.RecordId.ToString();
-                repl["Event.MachineName"] = evtrec.MachineName;
-                repl["Event.TimeCreated"] = evtrec.TimeCreated.Value.ToString();
-                repl["Event.ProviderName"] = evtrec.ProviderName;
-                repl["Event.ProcessId"] = evtrec.ProcessId.ToString();
-                // Event.EventData (NOTE: use EventData processor to parse event XML data)
-                //if (evtrec.GetType() == typeof(EventLogRecord)
-                //    || evtrec.GetType().IsSubclassOf(typeof(EventLogRecord)))
-                //{
-                //    try
-                //    {
-                //        EventLogRecord evtlog = (EventLogRecord)evtrec;
-                //        XDocument xml = XDocument.Parse(evtlog.ToXml());
-                //        XNamespace ns = "http://schemas.microsoft.com/win/2004/08/events/event";
-
-                //        foreach (var node in xml.Descendants(ns + "Data"))
-                //        {
-                //            repl["Event.EventData." + (string)node.Attribute("Name")] = node.Value;
-                //        }
-                //    }
-                //    catch (Exception ex)
-                //    {
-                //        Log.Info("Unable to get Event.EventData: " + ex.Message);
-                //    }
-                //}
-            }
-            else
-            {
-                repl["Event.EventId"] = "0";
-                repl["Event.RecordId"] = "0";
-                repl["Event.MachineName"] = "";
-                repl["Event.TimeCreated"] = "0";
-                repl["Event.ProviderName"] = "";
-                repl["Event.ProcessId"] = "";
-            }
-
-            // Processor
-            foreach (var item in evtent.ProcData)
-            {
-                if (item.Value == null) repl[item.Key] = "";
-                else repl[item.Key] = item.Value.ToString();
-            }
+            repl = evtent.ProcData;
         }
 
         public string ExpandTemplateVariables(string str)
@@ -462,7 +390,9 @@ namespace F2B
                     // replace variable
                     if (repl.ContainsKey(key))
                     {
-                        output.Append(repl[key]);
+                        object value = repl[key];
+                        if (value != null) output.Append(value.ToString());
+                        else output.Append("");
                     }
                     else if (defval != null)
                     {

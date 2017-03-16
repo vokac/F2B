@@ -11,6 +11,7 @@ namespace F2B.processors
     public class RangeProcessor : BoolProcessor, IThreadSafeProcessor
     {
         #region Fields
+        private string address;
         private Dictionary<IPAddress, int> ranges;
         private string mail;
         #endregion
@@ -19,6 +20,12 @@ namespace F2B.processors
         public RangeProcessor(ProcessorElement config, Service service)
             : base(config, service)
         {
+            address = "Event.Address";
+            if (config.Options["address"] != null)
+            {
+                address = config.Options["address"].Value;
+            }
+
             ranges = new Dictionary<IPAddress, int>();
 
             foreach (RangeElement range in config.Ranges)
@@ -41,14 +48,42 @@ namespace F2B.processors
         #region Override
         public override string Execute(EventEntry evtlog)
         {
+            if (ranges.Count == 0)
+            {
+                return goto_failure;
+            }
+
+            string strAddress = evtlog.GetProcData<string>(address);
+            if (string.IsNullOrEmpty(strAddress))
+            {
+                Log.Info(GetType() + "[" + Name
+                    + "]: empty address attribute: " + address);
+
+                return goto_error;
+            }
+
+            IPAddress addr = null;
+            try
+            {
+                addr = IPAddress.Parse(strAddress.Trim()).MapToIPv6();
+            }
+            catch (FormatException ex)
+            {
+                Log.Info(GetType() + "[" + Name
+                    + "]: invalid address " + address
+                    + "[" + strAddress + "]: " + ex.Message);
+
+                return goto_error;
+            }
+
             string firstRange = null;
 
             foreach (KeyValuePair<IPAddress, int> range in ranges)
             {
-                IPAddress network = Utils.GetNetwork(evtlog.Address, range.Value);
+                IPAddress network = Utils.GetNetwork(addr, range.Value);
 
-                Log.Info("Range::Execute: " + evtlog.Address + "/"
-                    + range.Value + " -> " + network
+                Log.Info(GetType() + "[" + Name
+                    + "]: " + addr + "/" + range.Value + " -> " + network
                     + (range.Key.Equals(network) ? "" : " not")
                     + " in " + range.Key + "/" + range.Value);
 
@@ -86,6 +121,7 @@ namespace F2B.processors
         {
             base.Debug(output);
 
+            output.WriteLine("config address: {0}", address);
             foreach (KeyValuePair<IPAddress, int> range in ranges)
             {
                 output.WriteLine("config range: {0}/{1}", range.Key, range.Value);

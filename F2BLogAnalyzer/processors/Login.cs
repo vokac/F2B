@@ -179,6 +179,8 @@ namespace F2B.processors
 
 
         #region Fields
+        private string login;
+        private string address;
         private int maxsize;
         private string stateFile;
         private long findtime;
@@ -200,12 +202,24 @@ namespace F2B.processors
         public LoginProcessor(ProcessorElement config, Service service)
             : base(config, service)
         {
+            login = "failed";
+            address = "Event.Address";
             maxsize = 100000;
             stateFile = null;
             findtime = 86400;
             count = 24;
             ipv4_prefix = 32;
             ipv6_prefix = 64;
+
+            if (config.Options["login"] != null)
+            {
+                login = config.Options["login"].Value;
+            }
+
+            if (config.Options["address"] != null)
+            {
+                address = config.Options["address"].Value;
+            }
 
             if (config.Options["maxsize"] != null)
             {
@@ -435,12 +449,34 @@ namespace F2B.processors
 
         public override string Execute(EventEntry evtlog)
         {
+            string strLogin = evtlog.GetProcData<string>(login, "unknown");
+
             if (count != 0)
             {
                 // get network address for given IP and prefix
-                IPAddress addr = evtlog.Address;
+                string strAddress = evtlog.GetProcData<string>(address);
+                if (string.IsNullOrEmpty(strAddress))
+                {
+                    Log.Info("Login[" + Name + "]: empty address attribute: " + address);
+
+                    return goto_error;
+                }
+
+                IPAddress addr = null;
+                try
+                {
+                    addr = IPAddress.Parse(strAddress.Trim()).MapToIPv6();
+                }
+                catch (FormatException ex)
+                {
+                    Log.Info("Login[" + Name + "]: invalid address "
+                        + address + "[" + strAddress + "]: " + ex.Message);
+
+                    return goto_error;
+                }
+
                 int prefix = ipv6_prefix;
-                if (evtlog.Address.IsIPv4MappedToIPv6)
+                if (addr.IsIPv4MappedToIPv6)
                 {
                     prefix = ipv4_prefix;
                     if (prefix <= 32)
@@ -450,7 +486,7 @@ namespace F2B.processors
                 }
                 if (prefix != 128)
                 {
-                    addr = Utils.GetNetwork(evtlog.Address, prefix);
+                    addr = Utils.GetNetwork(addr, prefix);
                 }
 
                 // apply sliding windows for success/failure logins
@@ -463,19 +499,19 @@ namespace F2B.processors
                 history = null;
                 lock (lockSuccess)
                 {
-                    if (!success.TryGetValue(evtlog.Address, out history))
+                    if (!success.TryGetValue(addr, out history))
                     {
                         // number of records stored in dictionary has maxsize limit
-                        if (evtlog.Login == LoginStatus.SUCCESS && (maxsize == 0 || success.Count < maxsize))
+                        if (strLogin == "success" && (maxsize == 0 || success.Count < maxsize))
                         {
                             history = new LoginSlidingHistory(TimeSpan.FromSeconds(findtime).Ticks, count);
-                            success[evtlog.Address] = history;
+                            success[addr] = history;
                         }
                     }
 
                     if (history != null)
                     {
-                        if (evtlog.Login == LoginStatus.SUCCESS)
+                        if (strLogin == "success")
                         {
                             cnt = history.Add(timestamp);
                         }
@@ -499,18 +535,18 @@ namespace F2B.processors
                     history = null;
                     lock (lockFailure)
                     {
-                        if (!failure.TryGetValue(evtlog.Address, out history))
+                        if (!failure.TryGetValue(addr, out history))
                         {
-                            if (evtlog.Login == LoginStatus.FAILURE)
+                            if (strLogin == "failed")
                             {
                                 history = new LoginSlidingHistory(TimeSpan.FromSeconds(findtime).Ticks, count);
-                                failure[evtlog.Address] = history;
+                                failure[addr] = history;
                             }
                         }
 
                         if (history != null)
                         {
-                            if (evtlog.Login == LoginStatus.FAILURE)
+                            if (strLogin == "failed")
                             {
                                 cnt = history.Add(timestamp);
                             }
@@ -529,11 +565,11 @@ namespace F2B.processors
                 }
             }
 
-            if (evtlog.Login == LoginStatus.SUCCESS)
+            if (strLogin == "success")
             {
                 return goto_success;
             }
-            else if (evtlog.Login == LoginStatus.FAILURE)
+            else if (strLogin == "failed")
             {
                 return goto_failure;
             }
@@ -548,6 +584,8 @@ namespace F2B.processors
         {
             base.Debug(output);
 
+            output.WriteLine("config login: " + login);
+            output.WriteLine("config address: " + address);
             output.WriteLine("config maxsize: " + maxsize);
             output.WriteLine("config state: " + stateFile);
             output.WriteLine("config findtime: " + findtime);

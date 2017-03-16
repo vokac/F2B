@@ -14,10 +14,34 @@ namespace F2B.inputs
 {
     public class EventLogInput : BaseInput
     {
+        private class EventLogParserData
+        {
+            public string Id { get; }
+            public string Type { get; }
+            public string XPath { get; }
+            public int Index { get; }
+            public Regex Regex { get; }
+            public EventLogParserData(string id, string type, string xpath, int index, string regexp)
+            {
+                Id = id;
+                Type = type;
+                XPath = xpath;
+                Index = index;
+                Regex = null;
+
+                if (!string.IsNullOrWhiteSpace(regexp))
+                {
+                    Regex = new Regex(regexp, RegexOptions.Singleline);
+                }
+            }
+        }
+
         #region Fields
-        private IDictionary<string, Tuple<int, int>> evtmap;
         private EventLogPropertySelector evtsel;
-        private IList<Regex> evtregex;
+        private IList<EventLogParserData> evtregexs;
+        private IList<EventDataElement> evtdata_before;
+        private IDictionary<string, EventDataElement> evtdata_match;
+        private IList<EventDataElement> evtdata_after;
         private EventLogWatcher watcher;
         private object eventLock = new object();
         #endregion
@@ -26,6 +50,9 @@ namespace F2B.inputs
         public EventLogInput(InputElement input, SelectorElement selector, EventQueue equeue)
             : base(input, selector, equeue)
         {
+            Log.Info("input[" + InputName + "]/selector[" + SelectorName
+                + "] creating EventLogInput");
+
             // Event log query with suppressed events logged by this service
             StringBuilder qstr = new StringBuilder();
             qstr.Append("<QueryList>");
@@ -60,67 +87,70 @@ namespace F2B.inputs
 
             // event data parsers (e.g. XPath + regex to extract event data)
             // (it is important to preserve order - it is later used as array index)
-            List<Tuple<string, EventDataElement>> tmp = new List<Tuple<string, EventDataElement>>();
-            tmp.Add(new Tuple<string,EventDataElement>("address", selector.Address));
-            tmp.Add(new Tuple<string,EventDataElement>("port", selector.Port));
-            tmp.Add(new Tuple<string,EventDataElement>("username", selector.Username));
-            tmp.Add(new Tuple<string,EventDataElement>("domain", selector.Domain));
-
-            evtmap = new Dictionary<string, Tuple<int, int>>();
-            evtregex = new List<Regex>();
+            evtregexs = new List<EventLogParserData>();
             List<string> xPathRefs = new List<string>();
 
-            for (int i = 0; i < tmp.Count; i++)
+            foreach (RegexElement item in selector.Regexes)
             {
-                string evtdescr = tmp[i].Item1;
-                EventDataElement evtdata = tmp[i].Item2;
-
-                if (evtdata == null || string.IsNullOrEmpty(evtdata.XPath))
+                if (string.IsNullOrEmpty(item.XPath))
                 {
-                    if (evtdescr == "address")
-                    {
-                        throw new ArgumentException("No address in " + Name + " configuration");
-                    }
-
-                    evtmap[evtdescr] = new Tuple<int, int>(i, -1);
+                    Log.Warn("Invalid input[" + InputName + "]/selector[" + SelectorName
+                        + "] event regexp \"" + item.Id + "\" attribute xpath empty");
 
                     continue;
                 }
 
-                Regex regex = null;
-                if (!string.IsNullOrWhiteSpace(evtdata.Value))
+                if (!xPathRefs.Contains(item.XPath))
                 {
-                    string evtstr = evtdata.Value.Trim();
-                    try
-                    {
-                        regex = new Regex(evtstr, RegexOptions.IgnoreCase | RegexOptions.Singleline);
-                    }
-                    catch (ArgumentException ex)
-                    {
-                        Log.Error("Invalid " + Name + " " + evtdescr + " regex: "
-                            + evtstr + " (" + ex.Message + ")");
-                        throw;
-                    }
+                    xPathRefs.Add(item.XPath);
                 }
 
-                evtregex.Add(regex);
-                if (xPathRefs.Contains(evtdata.XPath))
+                try
                 {
-                    int index = xPathRefs.IndexOf(evtdata.XPath);
-                    evtmap[evtdescr] = new Tuple<int, int>(i, index);
+                    int index = xPathRefs.IndexOf(item.XPath);
+                    EventLogParserData eli = new EventLogParserData(item.Id, item.Type, item.XPath, index, item.Value);
+                    evtregexs.Add(eli);
                 }
-                else
+                catch (ArgumentException ex)
                 {
-                    xPathRefs.Add(evtdata.XPath);
-                    evtmap[evtdescr] = new Tuple<int, int>(i, xPathRefs.Count - 1);
+                    Log.Error("Invalid input[" + InputName + "]/selector[" + SelectorName
+                        + "] event regexp failed: " + ex.Message);
+
+                    throw;
                 }
             }
 
-            Debug.Assert(tmp.Count == evtmap.Count,
-                "Invalid index map size (tmp[" + tmp.Count
-                + "] != map[" + evtmap.Count + "]).");
+            evtsel = null;
+            if (xPathRefs.Count > 0)
+            {
+                evtsel = new EventLogPropertySelector(xPathRefs);
+            }
 
-            evtsel = new EventLogPropertySelector(xPathRefs);
+            // user defined event properties
+            evtdata_before = new List<EventDataElement>();
+            evtdata_match = new Dictionary<string, EventDataElement>();
+            evtdata_after = new List<EventDataElement>();
+            foreach (EventDataElement item in selector.EventData)
+            {
+                if (item.Apply == "before")
+                {
+                    evtdata_before.Add(item);
+                }
+                else if (item.Apply == "after")
+                {
+                    evtdata_after.Add(item);
+                }
+                else if (item.Apply.StartsWith("match."))
+                {
+                    evtdata_match[item.Apply.Substring("match.".Length)] = item;
+                }
+                else
+                {
+                    Log.Warn("Invalid input[" + InputName + "]/selector[" + SelectorName
+                        + "] event data \"" + item.Name + "\" attribute apply \""
+                        + item.Apply + "\": ignoring this item");
+                }
+            }
         }
         #endregion
 
@@ -155,72 +185,75 @@ namespace F2B.inputs
             watcher.Enabled = false;
         }
 
-        private string GetLogRecordData(IList<object> ldata, IList<Regex> lregex, string etype)
+        public static IEnumerable<Tuple<string, string>> GetXPathData(object data, Regex regex)
         {
-            Debug.Assert(evtmap.ContainsKey(etype), "Trying to use missing data " + etype);
+            Log.Info("GetXPathData(" + data + ", " + regex + ")");
 
-            Tuple<int, int> idxs = evtmap[etype];
-            int idxregexp = idxs.Item1;
-            int idxxpath = idxs.Item2;
-
-            if (idxxpath < 0)
+            if (data == null)
             {
-                return null;
+                yield break;
             }
 
-            object edata = ldata[idxxpath];
-            Regex eregex = lregex[idxregexp];
-
-            return GetXPathData(edata, eregex, etype);
-        }
-            
-        private string GetXPathData(object edata, Regex eregex, string etype)
-        {
-            if (edata == null)
+            // XPath matched array of XML elements
+            if (data.GetType().IsArray)
             {
-                return null;
-            }
-
-            if (edata.GetType().IsArray)
-            {
-                foreach (string item in (object[])edata)
+                foreach (string item in (object[])data)
                 {
-                    string ret = GetXPathData(item, eregex, etype);
-                    if (ret != null)
+                    foreach (var ret in GetXPathData(item, regex))
                     {
-                        return ret;
+                        yield return ret;
                     }
                 }
 
-                return null;
+                yield break;
             }
 
             // with no regex we return all element data
-            if (eregex == null)
+            if (regex == null)
             {
-                return (string)edata;
+                Log.Info("A GetXPathData(" + data + ", " + regex + ")");
+                yield return new Tuple<string, string>(null, (string)data);
             }
-
-            // try to match regexp and parse required data
-            Match m = eregex.Match((string)edata);
-            if (!m.Success)
+            else
             {
-                //Log.Info("Received EventLog message from " + InputName
-                //    + "/" + SelectorName + ", regex \"" + eregex
-                //    + "\" doesn't match data: " + edata);
-                return null;
-            }
+                Log.Info("B GetXPathData(" + data + ", " + regex + ")");
+                // try to match regexp and parse required data
+                Match m = regex.Match((string)data);
+                if (!m.Success)
+                {
+                    //Log.Info("Received EventLog message from " + InputName
+                    //    + "/" + SelectorName + ", regex \"" + eregex
+                    //    + "\" doesn't match data: " + edata);
+                    yield break;
+                }
 
-            Group eregexGroup = m.Groups[etype];
-            if (eregexGroup == null || !eregexGroup.Success || string.IsNullOrWhiteSpace(eregexGroup.Value))
-            {
-                //Log.Info("Received EventLog message from " + InputName
-                //    + "/" + SelectorName + ", " + etype + " regex \"" + eregex
-                //    + "\" select empty data: " + edata);
-                return null;
-            }
+                foreach (int groupNumber in regex.GetGroupNumbers())
+                {
+                    Group regexGroup = m.Groups[groupNumber];
 
-            return eregexGroup.Value;
+                    if (regexGroup == null)
+                    {
+                        continue;
+                    }
+                    if (!regexGroup.Success)
+                    {
+                        continue;
+                    }
+                    if (regex.GroupNameFromNumber(groupNumber) == groupNumber.ToString())
+                    {
+                        continue;
+                    }
+
+                    string groupName = regex.GroupNameFromNumber(groupNumber);
+                    string groupValue = "";
+                    if (regexGroup.Value != null)
+                    {
+                        groupValue = regexGroup.Value;
+                    }
+
+                    yield return new Tuple<string, string>(groupName, groupValue);
+                }
+            }
         }
 
         /// <summary>
@@ -248,9 +281,14 @@ namespace F2B.inputs
                 return;
             }
 
-            long recordId = 0;
-            DateTime created = DateTime.Now;
-            string hostname = null;
+            int eventId;
+            long recordId;
+            string machineName;
+            DateTime created;
+            string providerName;
+            int processId;
+            string logName;
+            string logLevel;
             IList<object> evtdata = null;
 
             try
@@ -259,10 +297,19 @@ namespace F2B.inputs
                 // data with invalid handle (EventLogException)
                 lock (eventLock)
                 {
+                    eventId = evtlog.Id;
                     recordId = evtlog.RecordId.GetValueOrDefault(0);
-                    created = evtlog.TimeCreated.Value;
-                    hostname = evtlog.MachineName;
-                    evtdata = evtlog.GetPropertyValues(evtsel);
+                    machineName = evtlog.MachineName;
+                    created = evtlog.TimeCreated.GetValueOrDefault(DateTime.Now);
+                    providerName = evtlog.ProviderName;
+                    processId = evtlog.ProcessId.GetValueOrDefault(0);
+                    logName = evtlog.LogName;
+                    logLevel = evtlog.LevelDisplayName;
+                    // NOTE: may be just this line needs synchronization?
+                    if (evtsel != null)
+                    {
+                        evtdata = evtlog.GetPropertyValues(evtsel);
+                    }
                 }
             }
             catch (EventLogException ex)
@@ -276,13 +323,14 @@ namespace F2B.inputs
                 return;
             }
 
+            // just verbose debug info about received event
             if (Log.Level == EventLogEntryType.Information)
             {
                 // debug info
                 Log.Info("EventLog[" + recordId + "@" + Name + "]: new log event received");
 
                 // more debug info
-                for (int i = 0; i < evtdata.Count; i++)
+                for (int i = 0; evtdata != null && i < evtdata.Count; i++)
                 {
                     if (evtdata[i] != null)
                     {
@@ -305,45 +353,56 @@ namespace F2B.inputs
                 }
             }
 
-            string strAddress = GetLogRecordData(evtdata, evtregex, "address");
-            string strPort = GetLogRecordData(evtdata, evtregex, "port");
-            string strUsername = GetLogRecordData(evtdata, evtregex, "username");
-            string strDomain = GetLogRecordData(evtdata, evtregex, "domain");
-
-            if (strAddress == null)
+            IList<Tuple<string, string, string>> evtregexdata = new List<Tuple<string, string, string>>();
+            foreach (EventLogParserData evtregex in evtregexs)
             {
-                Log.Info("EventLog[" + recordId + "@" + Name + "] unable to get address");
-                return;
+                foreach (Tuple<string, string> item in GetXPathData(evtdata[evtregex.Index], evtregex.Regex))
+                {
+                    string key = item.Item1 != null ? "Event." + item.Item1 : evtregex.Id;
+                    evtregexdata.Add(new Tuple<string, string, string>(evtregex.Id, item.Item1, item.Item2));
+                }
             }
 
-            IPAddress address = null;
-            try
+            EventEntry evt = new EventEntry(created, machineName, this, arg);
+            // set basic event properties
+            evt.SetProcData("Event.EventId", eventId.ToString());
+            evt.SetProcData("Event.RecordId", recordId.ToString());
+            evt.SetProcData("Event.MachineName", machineName);
+            evt.SetProcData("Event.TimeCreated", created.ToString());
+            evt.SetProcData("Event.ProviderName", providerName);
+            evt.SetProcData("Event.ProcessId", processId.ToString());
+            evt.SetProcData("Event.LogName", logName);
+            evt.SetProcData("Event.LogLevel", logLevel);
+            foreach (EventDataElement item in evtdata_before)
             {
-                address = IPAddress.Parse(strAddress.Trim()).MapToIPv6();
+                if (item.Overwrite || !evt.HasProcData(item.Name))
+                {
+                    evt.SetProcData(item.Name, item.Value);
+                }
             }
-            catch (FormatException ex)
+            foreach (Tuple<string, string, string> item in evtregexdata)
             {
-                Log.Info("EventLog[" + recordId + "@" + Name + "] invalid address"
-                    + strAddress.Trim() + " (" + ex.Message + ")");
-                return;
+                EventDataElement ede = null;
+                evtdata_match.TryGetValue("match." + item.Item1, out ede);
+                if (ede != null)
+                {
+                    if (ede.Overwrite || !evt.HasProcData(item.Item2))
+                    {
+                        evt.SetProcData(item.Item2, item.Item3);
+                    }
+                }
             }
-
-            int port = -1;
-            try
+            foreach (EventDataElement item in evtdata_after)
             {
-                port = int.Parse(strPort);
+                if (item.Overwrite || !evt.HasProcData(item.Name))
+                {
+                    evt.SetProcData(item.Name, item.Value);
+                }
             }
-            catch (Exception)
-            {
-                // intentionally skip parser exeption for optional parameter
-            }
-
-            EventEntry evt = new EventEntry(created, hostname,
-                address, port, strUsername, strDomain, Login, this, arg);
+            // Event.EventData (NOTE: use EventData processor to parse event XML data)
 
             Log.Info("EventLog[" + recordId + "->" + evt.Id + "@"
-                + Name + "] queued message " + strUsername + "@" + address
-                + ":" + port + " from " + hostname + " status " + Login);
+                + Name + "] queued message from " + machineName);
 
             equeue.Produce(evt, Processor);
         }

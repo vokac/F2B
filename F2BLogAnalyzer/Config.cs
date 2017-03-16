@@ -436,17 +436,13 @@ namespace F2B
         { }
 
         // Create the element.
-        public SelectorElement(string name, string inputName, string inputType, string query, string address, string port, string username, string domain)
+        public SelectorElement(string name, string inputName, string inputType, string query)
         {
             Name = name;
             InputName = inputName;
             InputType = inputType;
             //Query = ??? query ???
-            // regexp to extract required log event data
-            //Address = address;
-            //Port = port;
-            //Username = username;
-            //Domain = domain;
+            // regex to extract required log event data
         }
 
         // Create the element.
@@ -455,8 +451,8 @@ namespace F2B
             Name = name;
             InputName = inputName;
             InputType = inputType;
-            // regexp to extract required log event data
-            //LineRegexp = "match + ignore"
+            // regex to extract required log event data
+            //LineRegex = "match + ignore"
         }
         #endregion
 
@@ -516,22 +512,6 @@ namespace F2B
             }
         }
 
-        // Get or set the login status.
-        [ConfigurationProperty("login",
-          DefaultValue = "failure",
-          IsRequired = false)]
-        public string Login
-        {
-            get
-            {
-                return (string)this["login"];
-            }
-            set
-            {
-                this["login"] = value;
-            }
-        }
-
         // Get or set the first processor name.
         [ConfigurationProperty("processor",
           DefaultValue = "",
@@ -558,85 +538,82 @@ namespace F2B
             }
         }
 
-        // Get or set the selector regex to extract client IP address.
-        [ConfigurationProperty("address")]
-        public EventDataElement Address
-        {
-            get
-            {
-                return (EventDataElement)this["address"];
-            }
-        }
 
-        // Get or set the selector regex to extract client port.
-        [ConfigurationProperty("port")]
-        public EventDataElement Port
-        {
-            get
-            {
-                return (EventDataElement)this["port"];
-            }
-        }
-
-        // Get or set the selector regex to extract required username.
-        [ConfigurationProperty("username")]
-        public EventDataElement Username
-        {
-            get
-            {
-                return (EventDataElement)this["username"];
-            }
-        }
-
-        // Get or set the selector regex to extract required domain.
-        [ConfigurationProperty("domain")]
-        public EventDataElement Domain
-        {
-            get
-            {
-                return (EventDataElement)this["domain"];
-            }
-        }
-
-
-        // collection of regexps
+        // collection of regexes
         //
-        public class RegexpCollection : ConfigurationElementCollection
+        public class RegexCollection : ConfigurationElementCollection
         {
             #region Overrides
             protected override ConfigurationElement CreateNewElement()
             {
-                return new RegexpElement();
+                return new RegexElement();
             }
 
             protected override object GetElementKey(ConfigurationElement element)
             {
-                RegexpElement re = element as RegexpElement;
-                return re.Value;
+                //RegexElement re = element as RegexElement;
+                //return re.Value;
+                return element;
             }
 
-            public RegexpElement this[int index]
+            public RegexElement this[int index]
             {
-                get { return base.BaseGet(index) as RegexpElement; }
+                get { return base.BaseGet(index) as RegexElement; }
             }
 
-            //public new RegexpElement this[string key]
+            //public new RegexElement this[string key]
             //{
-            //    get { return base.BaseGet(key) as RegexpElement; }
+            //    get { return base.BaseGet(key) as RegexElement; }
             //}
             #endregion
         }
 
-        [ConfigurationProperty("regexps", IsDefaultCollection = false)]
-        [ConfigurationCollection(typeof(RegexpCollection),
-            AddItemName = "regexp",
+        [ConfigurationProperty("regexes", IsDefaultCollection = false)]
+        [ConfigurationCollection(typeof(RegexCollection),
+            AddItemName = "regex",
             ClearItemsName = "clear",
             RemoveItemName = "remove")]
-        public RegexpCollection Regexps
+        public RegexCollection Regexes
         {
             get
             {
-                return (RegexpCollection)base["regexps"];
+                return (RegexCollection)base["regexes"];
+            }
+        }
+
+
+        // collection of evtdts
+        //
+        public class EventDataCollection : ConfigurationElementCollection
+        {
+            #region Overrides
+            protected override ConfigurationElement CreateNewElement()
+            {
+                return new EventDataElement();
+            }
+
+            protected override object GetElementKey(ConfigurationElement element)
+            {
+                return element;
+            }
+
+            public EventDataElement this[int index]
+            {
+                get { return base.BaseGet(index) as EventDataElement; }
+            }
+            #endregion
+        }
+
+        [ConfigurationProperty("evtdts", IsDefaultCollection = false)]
+        [ConfigurationCollection(typeof(EventDataCollection),
+            AddItemName = "evtdata",
+            ClearItemsName = "clear",
+            RemoveItemName = "remove")]
+        public EventDataCollection EventData
+        {
+            get
+            {
+                return (EventDataCollection)base["evtdts"];
             }
         }
         #endregion
@@ -655,21 +632,67 @@ namespace F2B
     }
 
 
-    // configuration to extract IP address from event log message
+    // configuration filter reference
     //
-    public class EventDataElement : ConfigurationTextElement<string>
+    public class RegexElement : ConfigurationTextElement<string>
     {
         #region Constructors
         // Create the element.
-        public EventDataElement()
+        public RegexElement()
         { }
+
+        // Create the element.
+        public RegexElement(string rtype, string regex)
+        {
+            Type = rtype;
+            // Value = regex
+        }
+        #endregion
+
+        #region Overrides
+        public override bool IsReadOnly()
+        {
+            return false;
+        }
         #endregion
 
         #region Properties
-        // Get or set the selector regex to extract client IP address.
+        // Get or set the regex ID.
+        [ConfigurationProperty("id",
+          DefaultValue = null,
+          IsRequired = false)]
+        public string Id
+        {
+            get
+            {
+                return (string)this["id"];
+            }
+            set
+            {
+                this["id"] = value;
+            }
+        }
+
+        // Get or set the regex type.
+        [ConfigurationProperty("type",
+          DefaultValue = "default",
+          IsRequired = true)]
+        public string Type
+        {
+            get
+            {
+                return (string)this["type"];
+            }
+            set
+            {
+                this["type"] = value;
+            }
+        }
+
+        // Get or set xpath used for EventLog to select right data
         [ConfigurationProperty("xpath",
           DefaultValue = null,
-          IsRequired = true)]
+          IsRequired = false)]
         public string XPath
         {
             get
@@ -687,18 +710,20 @@ namespace F2B
 
     // configuration filter reference
     //
-    public class RegexpElement : ConfigurationTextElement<string>
+    public class EventDataElement : ConfigurationTextElement<string>
     {
         #region Constructors
         // Create the element.
-        public RegexpElement()
+        public EventDataElement()
         { }
 
         // Create the element.
-        public RegexpElement(string rtype, string regexp)
+        public EventDataElement(string name, string value, string apply = "after", bool overwrite = true)
         {
-            Type = rtype;
-            // Value = regexp
+            Name = name;
+            //Value = value;
+            Apply = apply;
+            Overwrite = overwrite;
         }
         #endregion
 
@@ -710,19 +735,51 @@ namespace F2B
         #endregion
 
         #region Properties
-        // Get or set the regex type.
-        [ConfigurationProperty("type",
+        // Get or set the name of event data.
+        [ConfigurationProperty("name",
           DefaultValue = "default",
           IsRequired = true)]
-        public string Type
+        public string Name
         {
             get
             {
-                return (string)this["type"];
+                return (string)this["name"];
             }
             set
             {
-                this["type"] = value;
+                this["name"] = value;
+            }
+        }
+
+        // Get or set when to apply evenat data value
+        [ConfigurationProperty("apply",
+          DefaultValue = "after",
+          IsRequired = false)]
+        public string Apply
+        {
+            get
+            {
+                return (string)this["apply"];
+            }
+            set
+            {
+                this["apply"] = value;
+            }
+        }
+
+        // Get or set the failure label.
+        [ConfigurationProperty("overwrite",
+          DefaultValue = true,
+          IsRequired = false)]
+        public bool Overwrite
+        {
+            get
+            {
+                return (bool)this["overwrite"];
+            }
+            set
+            {
+                this["overwrite"] = value;
             }
         }
         #endregion

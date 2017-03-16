@@ -116,7 +116,7 @@ namespace F2B.processors
                 }
                 catch (OperationCanceledException ex)
                 {
-                    Log.Info("Canceled SQL async take (queue size: " + asyncQueue.Count + ")");
+                    Log.Info("Canceled SQL async take (queue size: " + asyncQueue.Count + "): " + ex.Message);
                     break;
                 }
                 catch (Exception ex)

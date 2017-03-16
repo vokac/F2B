@@ -64,8 +64,6 @@
       * name ........ unique selector name
       * input_name .. event input name (input_name or input type must be defined)
       * input_type .. event input type (input_name or input type must be defined)
-      * login ....... optional event kind unknown, success, fail
-                      (default: unknown, autodetected for eventlog using keyword)
       * processor ... processor name used for selected events
                       (default: first processor defined in `<processors>` section)
     
@@ -82,9 +80,9 @@
     Flat log file configuration (input_type="FileLog"):
       List of regular expressions are used to match log lines and extract required
       data (e.g. IP address). There are several types of regular expression
-        ignore ... matched line is completely ignored
-        fail ..... matched line means login failure
-        success .. matched line means login success
+        match .... matched line and its data preselected for further processing
+        ignore ... matched line is completely ignored (eventhough it was previously matched)
+        data ..... just use matched named regex group as Event.group_name properties
     -->
     <!-- List of globally defined EventLog keywords
     (System.Diagnostics.Eventing.Reader.StandardEventKeywords)
@@ -103,12 +101,20 @@
     -->
     <selectors>
 
-      <!-- Test selector for eventlog data produced by LogEvents.exe -->
-      <selector name="test" input_type="EventLog" processor="first">
-        <query><![CDATA[<Select Path="Application">*[System[(Provider/@Name='F2B test log event') and (EventID=1)]]</Select>]]></query>
-        <address xpath="Event/EventData/Data"><![CDATA[(?<username>.+)@(?<address>.+):(?<port>.+)]]></address>
-        <port xpath="Event/EventData/Data"><![CDATA[(?<username>.+)@(?<address>.+):(?<port>.+)]]></port>
-        <username xpath="Event/EventData/Data"><![CDATA[(?<username>.+)@(?<address>.+):(?<port>.+)]]></username>
+      <!-- Dump selector for eventlog data produced by LogEvents.exe -->
+      <selector name="dump" input_type="EventLog" processor="last">
+        <query><![CDATA[<Select Path="Application">*[System[(Provider/@Name='F2BDump') and (EventID=0) and (Level=2)]]</Select>]]></query>
+      </selector>
+
+      <!-- Benchmark selector for eventlog data produced by LogEvents.exe -->
+      <selector name="benchmark" input_type="EventLog" processor="first">
+        <query><![CDATA[<Select Path="Application">*[System[(Provider/@Name='F2BBench') and (EventID=0) and (Level=2)]]</Select>]]></query>
+        <regexes>
+          <regex id="Benchmark" type="data" xpath="Event/EventData/Data"><![CDATA[(?<Username>.+)@(?<Address>.+):(?<Port>.+)]]></regex>
+        </regexes>
+        <evtdts>
+          <evtdata name="Event.Login">failed</evtdata>
+        </evtdts>
       </selector>
 
       <!-- All audit failures
@@ -128,21 +134,52 @@
             </Suppress>
           ]]>
         </query>
-        <!-- Select event XML element with XPath and use its text content -->
-        <address xpath="Event/EventData/Data[@Name='IpAddress']"/>
-        <port xpath="Event/EventData/Data[@Name='IpPort']"/>
-        <username xpath="Event/EventData/Data[@Name='TargetUserName']"/>
-        <domain xpath="Event/EventData/Data[@Name='TargetDomainName']"/>
-        <!-- Regex with named groups can be used to parse data from complex text log data
-        <address xpath="Event/EventData/Data[@Name='IpAddress']"><![CDATA[(?<address>.+)]]></address>
-        <port xpath="Event/EventData/Data[@Name='IpPort']"><![CDATA[(?<port>.+)]]></port>
-        <username xpath="Event/EventData/Data[@Name='TargetUserName']"><![CDATA[(?<username>.+)]]></username>
-        <domain xpath="Event/EventData/Data[@Name='TargetDomainName']"><![CDATA[(?<domain>.+)]]></domain>
+        <!-- Select event XML element with XPath and use its content as event parameters -->
+        <!-- These regexes can be used to parse "standard" attributes from event log
+        data to create common Event.NAME properties used by processor chain.
+        regex attributes:
+          id ....... regex identification (can be used to add evtdata for matched regexes)
+          type ..... drives what to do in case regex match/fail to match event data
+                     data - parse data using regex
+                     match - use event if matches regex
+                     ignore - ignore event if matches regex
+          xpath .... used only by EventLog to apply regex just on selected data
+          "value" .. regex with named groups that provides Event."GROUP_NAME" data
+                     empty value means new Event."ID" with full data from given xpath
         -->
+        <regexes>
+          <regex id="Address" type="data" xpath="Event/EventData/Data[@Name='IpAddress']"/>
+          <regex id="Port" type="data" xpath="Event/EventData/Data[@Name='IpPort']"/>
+          <regex id="Username" type="data" xpath="Event/EventData/Data[@Name='TargetUserName']"/>
+          <regex id="Domain" type="data" xpath="Event/EventData/Data[@Name='TargetDomainName']"/>
+          <!--
+          <regex id="Address" type="data" xpath="Event/EventData/Data[@Name='IpAddress']"><![CDATA[(?<Address>.*)]]></regex>
+          <regex id="Port" type="data" xpath="Event/EventData/Data[@Name='IpPort']"><![CDATA[(?<Port>.*)]]></regex>
+          <regex id="Username" type="data" xpath="Event/EventData/Data[@Name='TargetUserName']"><![CDATA[(?<Username>.*)]]></regex>
+          <regex id="Domain" type="data" xpath="Event/EventData/Data[@Name='TargetDomainName']"><![CDATA[(?<Domain>.*)]]></regex>
+          -->
+        </regexes>
+        <!-- User defined additional event properties for this input/selector -->
+        <!-- It can be added unconditionally "before" or "after" extracting event
+        data using regexes or only in case regex with given ID matched processed
+        event data (attribute apply must be set to "match.ID" where ID corresponds
+        to the regex ID attribute). You can set overwrite attribute to force
+        new value with same Event."NAME" to overwrite existing data that was set
+        earlier.
+        -->
+        <evtdts>
+          <evtdata name="Event.Login">failed</evtdata>
+          <!--
+          <evtdata name="Event.Login" apply="before">failed</evtdata>
+          <evtdata name="Event.Login.Address" apply="match.Address">${Event.Address}</evtdata>
+          <evtdata name="Event.Login.Username" apply="match.Username">${Event.Username}</evtdata>
+          <evtdata name="Event.Login" apply="after" overwrite="false">failed not modified</evtdata>
+          -->
+        </evtdts>
       </selector>
 
       <!-- Audit success (Keywords=0x8020000000000000) from login attempts to Windows -->
-      <selector name="login_success" input_type="EventLog" login="success">
+      <selector name="login_success" input_type="EventLog">
         <!-- (Keywords == 0x8000000000000000 and Keywords == 0x0020000000000000) -->
         <query><![CDATA[
             <Select Path="Security">
@@ -165,10 +202,15 @@
                  <Suppress Path="Security">*[System/Provider/@Name="F2B"]</Suppress>
         ]]></query>
         -->
-        <address xpath="Event/EventData/Data[@Name='IpAddress']"/>
-        <port xpath="Event/EventData/Data[@Name='IpPort']"/>
-        <username xpath="Event/EventData/Data[@Name='TargetUserName']"/>
-        <domain xpath="Event/EventData/Data[@Name='TargetDomainName']"/>
+        <regexes>
+          <regex id="Address" type="data" xpath="Event/EventData/Data[@Name='IpAddress']"/>
+          <regex id="Port" type="data" xpath="Event/EventData/Data[@Name='IpPort']"/>
+          <regex id="Username" type="data" xpath="Event/EventData/Data[@Name='TargetUserName']"/>
+          <regex id="Domain" type="data" xpath="Event/EventData/Data[@Name='TargetDomainName']"/>
+        </regexes>
+        <evtdts>
+          <evtdata name="Event.Login">success</evtdata>
+        </evtdts>
       </selector>
 
       <!-- Audit failures from failed login attempts to Microsoft SQL Server -->
@@ -178,11 +220,16 @@
             <Select Path="Application">*[System[(band(Keywords,40532396646334464))] and System/Provider/@Name='MSSQLSERVER']</Select>
           ]]>
         </query>
-        <address xpath="Event/EventData/Data">
-          <![CDATA[
-            \[Client ?: ?(?<address>.*?)\]
-          ]]>
-        </address>
+        <regexes>
+          <regex id="Address" type="data" xpath="Event/EventData/Data">
+            <![CDATA[
+              \[Client ?: ?(?<Address>.*?)\]
+            ]]>
+          </regex>
+        </regexes>
+        <evtdts>
+          <evtdata name="Event.Login">failed</evtdata>
+        </evtdts>
       </selector>
 
       <!-- Block audit failures from failed login attempts to MySQL Server -->
@@ -192,27 +239,42 @@
             <Select Path="Application">*[System[(band(Keywords,36028797018963968))] and System/Provider/@Name='MySQL']</Select>
           ]]>
         </query>
-        <address xpath="Event/EventData/Data">
-          <![CDATA[
-            Access denied for user '.*?'@'(?<address>.*?)'
-          ]]>
-        </address>
+        <regexes>
+          <regex id="Address" type="data" xpath="Event/EventData/Data">
+            <![CDATA[
+              Access denied for user '.*?'@'(?<address>.*?)'
+            ]]>
+          </regex>
+        </regexes>
+        <evtdts>
+          <evtdata name="Event.Login">failed</evtdata>
+        </evtdts>
       </selector>
       
-      <!-- Selector for flat log file input lines --><!--
+      <!-- Selector for flat log file input lines -->
+      <!--
       <selector name="apache_log" input_name="apache">
-        <regexps>
-          <regexp type="fail"><![CDATA[test fail rule (?<address>.*?) and (?<port>.*?) and (?<username>.*?) and (?<domain>.*?)]]></regexp>
-          <regexp type="ignore"><![CDATA[test ignore rule]]></regexp>
-        </regexps>
-      </selector>-->
+        <regexes>
+          <regex type="match"><![CDATA[test fail rule (?<address>.*?) and (?<port>.*?) and (?<username>.*?) and (?<domain>.*?)]]></regex>
+          <regex type="ignore"><![CDATA[test ignore rule]]></regex>
+        </regexes>
+        <evtdts>
+          <evtdata name="Event.Login">failed</evtdata>
+        </evtdts>
+      </selector>
+      -->
 
-      <!-- Selector for ssh log file --><!--
+      <!-- Selector for ssh log file -->
+      <!--
       <selector name="secure_log" input_name="ssh">
-        <regexps>
-          <regexp type="fail"><![CDATA[^(?<time_b>...) (?<time_e>..) (?<time_H>..):(?<time_M>..):(?<time_S>..) (?<hostname>\S+) sshd\[\d+\]: Failed password for (?<user>.*) from (?<address>\S+) port (?<port>\d+) ssh2$]]></regexp>
-        </regexps>
-      </selector>-->
+        <regexes>
+          <regex id="failline" type="match"><![CDATA[^(?<time_b>...) (?<time_e>..) (?<time_H>..):(?<time_M>..):(?<time_S>..) (?<hostname>\S+) sshd\[\d+\]: Failed password for (?<user>.*) from (?<address>\S+) port (?<port>\d+) ssh2$]]></regex>
+        </regexes>
+        <evtdts>
+          <evtdata name="Event.Login">failed</evtdata>
+        </evtdts>
+      </selector>
+      -->
     </selectors>
 
     <!-- Parameters for log event producer/consumer queue -->
@@ -379,6 +441,9 @@
       <processor name="login" type="Login">
         <description>Skip events that correspond successfull login</description>
         <options>
+          <!-- address comes usually directly from input parsers -->
+          <option key="login" value="Event.Login"/>
+          <option key="address" value="Event.Address"/>
           <option key="maxsize" value="100000"/>
           <option key="findtime" value="86400"/>
           <option key="count" value="24"/>
@@ -405,6 +470,8 @@
           <range network="2001:db8::/32"/>
         </ranges>
         <options>
+          <!-- address comes usually directly from input parsers -->
+          <option key="address" value="Event.Address"/>
           <!-- create ${whitelist.Mail} variable on successful search -->
           <option key="mail" value="whitelist-admin@example.com"/>
         </options>
@@ -414,6 +481,9 @@
       <processor name="address_group" type="RangeFile">
         <description>Read address ranges from text file (automatically reread modifications)</description>
         <options>
+          <!-- address comes usually directly from input parsers -->
+          <option key="address" value="Event.Address"/>
+          <!-- data file with IP address ranges -->
           <option key="filename" value="c:\F2B\IP.ranges"/>
         </options>
         <!-- apply this processor to matched log events and jump to last processor -->
@@ -435,13 +505,15 @@
       <processor name="if_ad_account_exists" type="Account">
         <description>Filter log events for non-existing accounts</description>
         <options>
+          <!-- username comes usually directly from input parsers -->
+          <option key="username" value="Event.Username"/>
           <!-- data "source" is reference to existing "account" name -->
           <option key="account" value="ad_accounts"/>
-          <option key="mode" value="exists"/>
+          <option key="status" value="exists"/>
           <!--
-          <option key="mode" value="disabled"/>
-          <option key="mode" value="locked"/>
-          <option key="mode" value="disabled|locked"/>
+          <option key="status" value="disabled"/>
+          <option key="status" value="locked"/>
+          <option key="status" value="disabled|locked"/>
           -->
         </options>
         <goto success="ad_account_exists" failure="not_ad_account_exists" error="ad_account_error"/>
@@ -502,6 +574,8 @@
           F2B monitoring (prefix /32) and per subnet IPv6 monitoring
           (prefix /64).
           -->
+          <!-- address comes usually directly from input parsers -->
+          <option key="address" value="Event.Address"/>
           <option key="state" value="c:\F2B\fail2ban.state"/>
           <option key="findtime" value="600"/>
           <option key="ipv4_prefix" value="32"/>

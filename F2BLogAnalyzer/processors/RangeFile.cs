@@ -12,6 +12,7 @@ namespace F2B.processors
     public class RangeFileProcessor : BoolProcessor, IThreadSafeProcessor
     {
         #region Fields
+        private string address;
         private string filename;
         private char[] separator;
         private Dictionary<IPAddress, int> ranges;
@@ -24,6 +25,12 @@ namespace F2B.processors
         public RangeFileProcessor(ProcessorElement config, Service service)
             : base(config, service)
         {
+            address = "Event.Address";
+            if (config.Options["address"] != null)
+            {
+                address = config.Options["address"].Value;
+            }
+
             if (config.Options["filename"] != null)
             {
                 filename = config.Options["filename"].Value;
@@ -31,8 +38,8 @@ namespace F2B.processors
 
             if (string.IsNullOrEmpty(filename))
             {
-                throw new Exception("Undefined configuration file for \""
-                    + Name + "\" processor");
+                throw new Exception(GetType() + "[" + Name
+                    + "]: Undefined or empty filename attribute");
             }
 
             string dirname = Path.GetDirectoryName(filename);
@@ -43,8 +50,8 @@ namespace F2B.processors
 
             if (!Directory.Exists(dirname))
             {
-                throw new Exception("Processor \"" + Name
-                    + "\" configuration file \"" + filename
+                throw new Exception(GetType() + "[" + Name
+                    + "]: configuration file \"" + filename
                     + "\" contains invalid path \"" + dirname + "\"");
             }
 
@@ -72,12 +79,14 @@ namespace F2B.processors
                 {
                     if (ranges == null)
                     {
-                        Log.Error("Config \"" + filename + "\" doesn't exist");
+                        Log.Error(GetType() + "[" + Name
+                            + "]: config \"" + filename + "\" doesn't exist");
                     }
                     else
                     {
-                        Log.Warn("Config file \"" + filename
-                        + "\" doesn't exist, skipping update");
+                        Log.Warn(GetType() + "[" + Name
+                            + "]: config file \"" + filename
+                            + "\" doesn't exist, skipping update");
                     }
                     return;
                 }
@@ -125,7 +134,8 @@ namespace F2B.processors
                         }
                         catch (FormatException ex)
                         {
-                            Log.Error("Unable to parse range in \"" + filename
+                            Log.Error(GetType() + "[" + Name
+                                + "]: unable to parse range in \"" + filename
                                 + "\" (line #" + pos + "): " + line.Trim()
                                 + " (" + ex.Message + ")");
                             continue;
@@ -170,12 +180,14 @@ namespace F2B.processors
             }
             catch (Exception ex)
             {
-                Log.Error("Unable to process \"" + filename + "\": " + ex.Message);
+                Log.Error(GetType() + "[" + Name
+                    + "]: unable to process \"" + filename + "\": " + ex.Message);
             }
 
             if (ranges != null && ranges.Count == 0)
             {
-                Log.Info("No valid address range in \"" + filename
+                Log.Info(GetType() + "[" + Name
+                    + "]: no valid address range in \"" + filename
                     + "\"? That's suspicious...");
             }
         }
@@ -183,7 +195,8 @@ namespace F2B.processors
         private void FileWatcherChanged(object source, FileSystemEventArgs e)
         {
             WatcherChangeTypes wct = e.ChangeType;
-            Log.Info("FileWatcherChanged for \"" + filename
+            Log.Info(GetType() + "[" + Name
+                + "]: FileWatcherChanged for \"" + filename
                 + "\": " + wct.ToString() + ", " + e.FullPath);
 
             UpdateConfiguration();
@@ -209,14 +222,42 @@ namespace F2B.processors
                 return goto_failure;
             }
 
+            if (ranges.Count == 0)
+            {
+                return goto_failure;
+            }
+
+            string strAddress = evtlog.GetProcData<string>(address);
+            if (string.IsNullOrEmpty(strAddress))
+            {
+                Log.Info(GetType() + "[" + Name
+                    + "]: empty address attribute: " + address);
+
+                return goto_error;
+            }
+
+            IPAddress addr = null;
+            try
+            {
+                addr = IPAddress.Parse(strAddress.Trim()).MapToIPv6();
+            }
+            catch (FormatException ex)
+            {
+                Log.Info(GetType() + "[" + Name
+                    + "]: invalid address " + address
+                    + "[" + strAddress + "]: " + ex.Message);
+
+                return goto_error;
+            }
+
             bool contain = false;
 
             foreach (KeyValuePair<IPAddress, int> range in ranges)
             {
-                IPAddress network = Utils.GetNetwork(evtlog.Address, range.Value);
+                IPAddress network = Utils.GetNetwork(addr, range.Value);
 
-                Log.Info("RangeFile::Execute: " + evtlog.Address + "/"
-                    + range.Value + " -> " + network
+                Log.Info(GetType() + "[" + Name
+                    + "]: " + addr + "/" + range.Value + " -> " + network
                     + (range.Key.Equals(network) ? "" : " not")
                     + " in " + range.Key + "/" + range.Value);
 
@@ -248,7 +289,7 @@ namespace F2B.processors
             foreach (int prefix in prefixes.Reverse())
             {
                 string mail;
-                IPAddress network = Utils.GetNetwork(evtlog.Address, prefix);
+                IPAddress network = Utils.GetNetwork(addr, prefix);
 
                 if (rangesEmail.TryGetValue(network + "/" + prefix, out mail))
                 {
@@ -269,6 +310,7 @@ namespace F2B.processors
         {
             base.Debug(output);
 
+            output.WriteLine("config address: {0}", address);
             if (ranges != null)
             {
                 foreach (KeyValuePair<IPAddress, int> range in ranges)
