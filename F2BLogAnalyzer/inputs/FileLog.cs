@@ -492,7 +492,16 @@ namespace F2B.inputs
                 strHostname = Environment.MachineName;
             }
 
-            EventEntry evt = new EventEntry(created, strHostname, this, line);
+            EventEntry evt = new EventEntry(this, created, strHostname, line);
+
+            foreach (EventDataElement item in evtdata_before)
+            {
+                if (item.Overwrite || !evt.HasProcData(item.Name))
+                {
+                    evt.SetProcData(item.Name, item.Value);
+                }
+            }
+
             // NOTE: we should get rid of these default values, because reasonable
             // defaults can be set in place where we really use these varialbes
             evt.SetProcData("Event.EventId", "0");
@@ -504,13 +513,6 @@ namespace F2B.inputs
             evt.SetProcData("Event.LogName", filename);
             evt.SetProcData("Event.LogLevel", "Unknown");
 
-            foreach (EventDataElement item in evtdata_before)
-            {
-                if (item.Overwrite || !evt.HasProcData(item.Name))
-                {
-                    evt.SetProcData(item.Name, item.Value);
-                }
-            }
             foreach (Tuple<string, Regex> idregex in data)
             {
                 Regex regex = idregex.Item2;
@@ -577,6 +579,7 @@ namespace F2B.inputs
                     }
                 }
             }
+
             foreach (EventDataElement item in evtdata_after)
             {
                 if (item.Overwrite || !evt.HasProcData(item.Name))

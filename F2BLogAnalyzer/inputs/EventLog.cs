@@ -40,7 +40,7 @@ namespace F2B.inputs
         private EventLogPropertySelector evtsel;
         private IList<EventLogParserData> evtregexs;
         private IList<EventDataElement> evtdata_before;
-        private IDictionary<string, EventDataElement> evtdata_match;
+        private IList<KeyValuePair<string, EventDataElement>> evtdata_match;
         private IList<EventDataElement> evtdata_after;
         private EventLogWatcher watcher;
         private object eventLock = new object();
@@ -128,7 +128,7 @@ namespace F2B.inputs
 
             // user defined event properties
             evtdata_before = new List<EventDataElement>();
-            evtdata_match = new Dictionary<string, EventDataElement>();
+            evtdata_match = new List<KeyValuePair<string, EventDataElement>>();
             evtdata_after = new List<EventDataElement>();
             foreach (EventDataElement item in selector.EventData)
             {
@@ -142,7 +142,8 @@ namespace F2B.inputs
                 }
                 else if (item.Apply.StartsWith("match."))
                 {
-                    evtdata_match[item.Apply.Substring("match.".Length)] = item;
+                    string key = item.Apply.Substring("match.".Length);
+                    evtdata_match.Add(new KeyValuePair<string, EventDataElement>(key, item));
                 }
                 else
                 {
@@ -332,47 +333,30 @@ namespace F2B.inputs
                 // more debug info
                 for (int i = 0; evtdata != null && i < evtdata.Count; i++)
                 {
+                    EventLogParserData evtregex = evtregexs[i];
                     if (evtdata[i] != null)
                     {
                         if (evtdata[i].GetType().IsArray)
                         {
                             foreach (string item in (object[])evtdata[i])
                             {
-                                Log.Info("EventLog[" + recordId + "@" + Name + "][" + i + "](" + evtdata[i].GetType() + "):" + item.ToString());
+                                Log.Info("EventLog[" + recordId + "@" + Name + "][" + evtregex.XPath + "](" + evtdata[i].GetType() + "):" + item.ToString());
                             }
                         }
                         else
                         {
-                            Log.Info("EventLog[" + recordId + "@" + Name + "][" + i + "](" + evtdata[i].GetType() + "):" + evtdata[i].ToString());
+                            Log.Info("EventLog[" + recordId + "@" + Name + "][" + evtregex.XPath + "](" + evtdata[i].GetType() + "):" + evtdata[i].ToString());
                         }
                     }
                     else
                     {
-                        Log.Info("EventLog[" + recordId + "@" + Name + "][" + i + "]: NULL!!!");
+                        Log.Info("EventLog[" + recordId + "@" + Name + "][" + evtregex.XPath + "]: NULL!!!");
                     }
                 }
             }
 
-            IList<Tuple<string, string, string>> evtregexdata = new List<Tuple<string, string, string>>();
-            foreach (EventLogParserData evtregex in evtregexs)
-            {
-                foreach (Tuple<string, string> item in GetXPathData(evtdata[evtregex.Index], evtregex.Regex))
-                {
-                    string key = item.Item1 != null ? "Event." + item.Item1 : evtregex.Id;
-                    evtregexdata.Add(new Tuple<string, string, string>(evtregex.Id, item.Item1, item.Item2));
-                }
-            }
+            EventEntry evt = new EventEntry(this, created, machineName, arg);
 
-            EventEntry evt = new EventEntry(created, machineName, this, arg);
-            // set basic event properties
-            evt.SetProcData("Event.EventId", eventId.ToString());
-            evt.SetProcData("Event.RecordId", recordId.ToString());
-            evt.SetProcData("Event.MachineName", machineName);
-            evt.SetProcData("Event.TimeCreated", created.ToString());
-            evt.SetProcData("Event.ProviderName", providerName);
-            evt.SetProcData("Event.ProcessId", processId.ToString());
-            evt.SetProcData("Event.LogName", logName);
-            evt.SetProcData("Event.LogLevel", logLevel);
             foreach (EventDataElement item in evtdata_before)
             {
                 if (item.Overwrite || !evt.HasProcData(item.Name))
@@ -380,18 +364,39 @@ namespace F2B.inputs
                     evt.SetProcData(item.Name, item.Value);
                 }
             }
-            foreach (Tuple<string, string, string> item in evtregexdata)
+
+            // set basic event properties
+            evt.SetProcData("Event.EventId", eventId.ToString());
+            evt.SetProcData("Event.RecordId", recordId.ToString());
+            //evt.SetProcData("Event.MachineName", machineName);
+            //evt.SetProcData("Event.TimeCreated", created.ToString());
+            evt.SetProcData("Event.ProviderName", providerName);
+            evt.SetProcData("Event.ProcessId", processId.ToString());
+            evt.SetProcData("Event.LogName", logName);
+            evt.SetProcData("Event.LogLevel", logLevel);
+
+            IList<string> evtregexdata = new List<string>(); // ISet is not really better for small number of elements
+            foreach (EventLogParserData evtregex in evtregexs)
             {
-                EventDataElement ede = null;
-                evtdata_match.TryGetValue("match." + item.Item1, out ede);
-                if (ede != null)
+                foreach (Tuple<string, string> item in GetXPathData(evtdata[evtregex.Index], evtregex.Regex))
                 {
-                    if (ede.Overwrite || !evt.HasProcData(item.Item2))
+                    string key = item.Item1 != null ? item.Item1 : evtregex.Id;
+                    evt.SetProcData("Event." + key, item.Item2);
+                    evtregexdata.Add(item.Item1 != null ? item.Item1 : evtregex.Id);
+                }
+            }
+
+            foreach (KeyValuePair<string, EventDataElement> item in evtdata_match)
+            {
+                if (evtregexdata.Contains(item.Key))
+                {
+                    if (item.Value.Overwrite || !evt.HasProcData(item.Value.Name))
                     {
-                        evt.SetProcData(item.Item2, item.Item3);
+                        evt.SetProcData(item.Value.Name, item.Value.Value);
                     }
                 }
             }
+
             foreach (EventDataElement item in evtdata_after)
             {
                 if (item.Overwrite || !evt.HasProcData(item.Name))
@@ -403,6 +408,19 @@ namespace F2B.inputs
 
             Log.Info("EventLog[" + recordId + "->" + evt.Id + "@"
                 + Name + "] queued message from " + machineName);
+
+#if DEBUG
+            if (Log.Level == EventLogEntryType.Information)
+            {
+                Log.Info("EventLog[" + recordId + "->" + evt.Id + "@"
+                    + Name + "] " + evt.ProcData.Count + " properties");
+                foreach (var item in evt.ProcData)
+                {
+                    Log.Info("EventLog[" + recordId + "->" + evt.Id + "@"
+                        + Name + "]: " + item.Key + " = " + item.Value);
+                }
+            }
+#endif
 
             equeue.Produce(evt, Processor);
         }

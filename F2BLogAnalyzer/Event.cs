@@ -29,9 +29,9 @@ namespace F2B
     public interface IEventEntry
     {
         long Id { get; }
+        BaseInput Input { get; }
         DateTime Created { get; }
         string Hostname { get; }
-        BaseInput Input { get; }
         object LogData { get; }
         IReadOnlyDictionary<string, object> ProcData { get; }
         bool HasProcData(string key);
@@ -44,9 +44,9 @@ namespace F2B
     {
         #region Properties
         public long Id { get; private set; }
+        public BaseInput Input { get; set; }
         public DateTime Created { get; set; }
         public string Hostname { get; set; }
-        public BaseInput Input { get; set; }
         public object LogData { get; set; }
         public IReadOnlyDictionary<string, object> ProcData {
             get {
@@ -61,13 +61,13 @@ namespace F2B
         #endregion
 
         #region Constructors
-        public EventEntry(DateTime created, string hostname, BaseInput input, object ldata)
+        public EventEntry(BaseInput input, DateTime created, string hostname, object ldata)
         {
             Id = Interlocked.Increment(ref _counter);
 
+            Input = input;
             Created = created;
             Hostname = hostname;
-            Input = input;
             LogData = ldata;
 
             _procData = new Dictionary<string, object>();
