@@ -173,6 +173,8 @@ namespace F2B.processors
             output.WriteLine("config file: " + filename);
             output.WriteLine("config size: " + size);
             output.WriteLine("config rotate: " + rotate);
+            output.WriteLine("config template: " + template);
+            output.WriteLine("config synchronized: " + synchronized);
             output.WriteLine("status size_curr: " + size_curr);
             output.WriteLine("status nexceptions: " + nexceptions);
             output.WriteLine("status sw: " + sw);
