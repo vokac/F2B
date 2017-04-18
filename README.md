@@ -810,17 +810,141 @@ Send email created from predefined template
 
 #### Cmd
 
-Execute command with arguments expanded from use defined template string
+Execute command with arguments expanded from user defined string. It is quite
+tricky to do argument escaping correctly (e.g. arguments starting with "-")
+and probably even impossible when you use event variables in the argument
+string. Be avare that in worst case scenario this can lead to security
+vulnerability. In our example `${Event.Username}`) is controlled by user
+(advarsary) who can easily specify '" something' as his username and our
+code gets incomplete information for `param3`.
+
+You should avoid to use this processor for any other reason than for debugging.
+It is much better and more efficient to implement required functionality
+in powershell and use it together with `PSFunct` or `PSProc` processors.
+Our `Cmd` processor configuration example just shows how to use this processor,
+but calling powershell code this way is at least order of magnitude slower
+than our dedicated `PS*` processors.
+
+By default this processor wait for executable to finish (`wait_for_exit`)
+and store exit code in procname.ExitCode event log dictionary.
 
 ```xml
 <processor name="action_cmd" type="Cmd">
-  <description>Test cmd processor</description>
+  <description>Execute user defined command with arguments</description>
   <options>
-    <option key="path" value="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE"/>
-    <option key="args" value="-File c:\F2B\test.ps1 ${Event.EventID}"/>
+    <option key="path" value="c:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"/>
+    <option key="args" value="-File c:\\F2B\\PSCmd.ps1 &quot;-param1:${Event.Address}&quot; &quot;-param2:${Event.Username}&quot;"/>
+    <option key="wait_for_exit" value="true"/>
   </options>
   <goto on_error_next="true"/>
 </processor>
+```
+
+Example of simple `c:\F2B\PSCmd.ps1` powershell script that deals with arguments
+passed by the `Cmd` processor to powershell executable that defined in the
+sample configuration described above.
+
+```
+param (
+   [string]$param1 = "empty",
+   [string]$param2 = "empty",
+)
+
+$ret = $param1 + ';' + $param2
+Add-Content C:\F2B\PSCmd.out "$ret"
+#$ret
+```
+
+#### PSFunct
+
+Call powershell function implemented directly in configuration or from external file.
+Function accepts arguments that can be specified using "params" configuration option
+and list of named parameters. Last value returned by powershell function call is
+stored in procname.Result event log dictionary.
+
+```xml
+<processor name="psfunct" type="PSFunct">
+  <description>Call powershell function implemented directly here or in external file and store result in procname.Result</description>
+  <options>
+    <option key="code" value="function Test-Me($param1, $param2) { $ret = $param1 + ';' + $param2;Add-Content c:\F2B\PSFunct.out &quot;$ret&quot;;$ret }"/>
+    <!-- <option key="script" value="c:\F2B\PSFunct.ps1"/> -->
+    <option key="function" value="Test-Me"/>
+    <option key="params" value="param1,param2"/>
+    <option key="param.param1" value="${Event.Id}"/>
+    <option key="param.param2" value="${Event.Address}"/>
+  </options>
+  <!-- <goto on_error_next="true"/> -->
+</processor>
+```
+
+Example of simple `c:\F2B\PSFunct.ps1` powershell script used in `PSFunct`
+processor configuration sample.
+
+```
+function Test-Me($param1, $param2)
+{
+	$ret = $param1 + ';' + $param2
+	Add-Content C:\F2B\PSFunct.out "PSProcStart" $ret
+	$ret
+}
+```
+
+#### PSProc
+
+Allow user to implement F2B processors in powershell scripting language.
+In each processor livecycle stage corresponding function (start/execute/stop)
+is called. If you don't want to call start/execute/stop function use empty
+string as a value for corresponding function name. Function `funct_execute`
+is called for each captured event has one argument. This argument is used
+to pass `EventEntry` data structure that represents event log object so
+you have access to the same data as in `C#` processor.
+
+```xml
+<processor name="psproc" type="PSProc">
+  <description>Call processor implemented in powershell</description>
+  <options>
+    <option key="script" value="c:\F2B\PSProc.ps1"/>
+    <option key="funct_start" value="PSProcStart"/>
+    <option key="funct_stop" value="PSProcStop"/>
+    <option key="funct_execute" value="PSProcExecute"/>
+    <!-- <option key="threadsafe" value="true"/> not implemented -->
+  </options>
+  <!-- <goto on_error_next="true"/> -->
+</processor>
+```
+
+Example of simple `PSProc.ps1` powershell script that can be called
+by `PSProc` module.
+
+```
+function PSProcStart()
+{
+   Add-Content C:\F2B\PSProc.out "PSProcStart"
+}
+
+function PSProcStop()
+{
+   Add-Content C:\F2B\PSProc.out "PSProcStop"
+}
+
+function PSProcExecute($evtlog)
+{
+   Add-Content C:\F2B\PSProc.out "PSProcExecute"
+   Add-Content C:\F2B\PSProc.out "  Evtlog.Id: $($evtlog.Id)"
+   Add-Content C:\F2B\PSProc.out "  Evtlog.Input.Name: $($($evtlog.Input).Name)"
+   Add-Content C:\F2B\PSProc.out "  Evtlog.Input.InputType: $($($evtlog.Input).InputType)"
+   Add-Content C:\F2B\PSProc.out "  Evtlog.Input.Processor: $($($evtlog.Input).Processor)"
+   Add-Content C:\F2B\PSProc.out "  Evtlog.Created: $($evtlog.Created)"
+   Add-Content C:\F2B\PSProc.out "  Evtlog.Hostname: $($evtlog.Hostname)"
+   Add-Content C:\F2B\PSProc.out "  Evtlog.LogData: $($evtlog.LogData)"
+   $procNames = $evtlog.ProcNames -join ','
+   Add-Content C:\F2B\PSProc.out "  Evtlog.ProcNames: $procNames"
+   foreach ($data in $evtlog.ProcData.GetEnumerator()) {
+      Add-Content C:\F2B\PSProc.out "  $($data.Key): $($data.Value)"
+   }
+}
+
+Add-Content C:\F2B\PSProc.out "PSProcInit"
 ```
 
 #### Fail2banAction

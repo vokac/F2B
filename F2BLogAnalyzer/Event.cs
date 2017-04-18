@@ -33,6 +33,8 @@ namespace F2B
         DateTime Created { get; }
         string Hostname { get; }
         object LogData { get; }
+        IReadOnlyCollection<string> ProcNames { get; }
+        void AddProcName(string name);
         IReadOnlyDictionary<string, object> ProcData { get; }
         bool HasProcData(string key);
         T GetProcData<T>(string key, T def);
@@ -48,6 +50,13 @@ namespace F2B
         public DateTime Created { get; set; }
         public string Hostname { get; set; }
         public object LogData { get; set; }
+        public IReadOnlyCollection<string> ProcNames
+        {
+            get
+            {
+                return (IReadOnlyCollection<string>)_procNames;
+            }
+        }
         public IReadOnlyDictionary<string, object> ProcData {
             get {
                 return (IReadOnlyDictionary<string, object>) _procData;
@@ -58,6 +67,7 @@ namespace F2B
         #region Fields
         private static long _counter = 0;
         private IDictionary<string, object> _procData;
+        private IList<string> _procNames;
         #endregion
 
         #region Constructors
@@ -77,12 +87,15 @@ namespace F2B
             _procData["Environment.MachineName"] = System.Environment.MachineName;
             // input data
             _procData["Event.Id"] = Id.ToString();
+            _procData["Event.Time"] = Created.ToString();
             _procData["Event.Timestamp"] = Created.Ticks.ToString();
             _procData["Event.Hostname"] = (Hostname != null ? Hostname : "");
             _procData["Event.Type"] = Input.InputType;
             _procData["Event.Input"] = Input.InputName;
             _procData["Event.Selector"] = Input.SelectorName;
             _procData["Event.Processor"] = Input.Processor;
+
+            _procNames = new List<string>();
         }
 
         // copy constructor with individual ProcData
@@ -100,10 +113,17 @@ namespace F2B
             {
                 _procData[kv.Key] = kv.Value;
             }
+
+            _procNames = new List<string>(evt.ProcNames);
         }
         #endregion
 
         #region Methods
+        public void AddProcName(string name)
+        {
+            _procNames.Add(name);
+        }
+
         public bool HasProcData(string key)
         {
             return _procData.ContainsKey(key);
@@ -351,26 +371,7 @@ namespace F2B
             }
 
 #if DEBUG
-            IDictionary<string, ProcPerformance> summary = new Dictionary<string, ProcPerformance>();
-            foreach (string procName in processors.Keys)
-            {
-                summary[procName] = new ProcPerformance();
-            }
-
-            for (int i = 0; i < nconsumers; i++)
-            {
-                if (ethreads[i] == null) continue;
-                foreach (string procName in processors.Keys)
-                {
-                    ProcPerformance p = ethreads[i].Performance(procName);
-                    if (p == null) continue;
-                    summary[procName].count += p.count;
-                    summary[procName].sum += p.sum;
-                    if (summary[procName].min > p.min) summary[procName].min = p.min;
-                    if (summary[procName].max < p.max) summary[procName].max = p.max;
-                }
-            }
-
+            IDictionary<string, ProcPerformance> summary = PerfSum();
             foreach (string procName in processors.Keys)
             {
                 ProcPerformance p = summary[procName];
@@ -554,14 +555,44 @@ namespace F2B
                     {
                         try
                         {
+                            DateTime curr = DateTime.Now;
+                            long utc = curr.ToUniversalTime().Ticks;
+
                             output = new StreamWriter(new FileStream(debugFile, FileMode.Append));
                             output.WriteLine("======================================================================");
-                            output.WriteLine("Timestamp: " + DateTime.Now + " (UTC " + DateTime.UtcNow.Ticks + ")");
+                            output.WriteLine("======================================================================");
+                            output.WriteLine("Timestamp: " + curr + " (UTC " + utc + ")");
                             foreach (BaseProcessor p in processors.Values)
                             {
                                 output.WriteLine("========== " + p.GetType() + "[" + p.Name + "] processor ==========");
                                 p.Debug(output);
                             }
+
+                            output.WriteLine("========== processors performance summary ==========");
+                            IDictionary<string, ProcPerformance> summary = PerfSum();
+                            foreach (string perfProcName in processors.Keys)
+                            {
+                                ProcPerformance p = summary[perfProcName];
+                                output.WriteLine("Performance[{6}][{0}]: avg({1:0.00}/{2}={3:0.00}ms), min({4:0.00}ms), max({5:0.00}ms)", perfProcName, p.sum, p.count, p.sum / p.count, p.min, p.max, utc);
+                            }
+
+                            output.WriteLine("========== memory usage summary ==========");
+                            Process currentProcess = Process.GetCurrentProcess();
+                            string linePrefix = string.Format("Process[{0}][{1}]", utc, currentProcess.Id);
+                            output.WriteLine("{0}: NonpagedSystemMemorySize64 = {1}", linePrefix, currentProcess.NonpagedSystemMemorySize64);
+                            output.WriteLine("{0}: PagedMemorySize64 = {1}", linePrefix, currentProcess.PagedMemorySize64);
+                            output.WriteLine("{0}: PagedSystemMemorySize64 = {1}", linePrefix, currentProcess.PagedSystemMemorySize64);
+                            output.WriteLine("{0}: PeakPagedMemorySize64 = {1}", linePrefix, currentProcess.PeakPagedMemorySize64);
+                            output.WriteLine("{0}: PeakVirtualMemorySize64 = {1}", linePrefix, currentProcess.PeakVirtualMemorySize64);
+                            output.WriteLine("{0}: PeadWorkingSet64 = {1}", linePrefix, currentProcess.PeakWorkingSet64);
+                            output.WriteLine("{0}: PrivateMemorySize64 = {1}", linePrefix, currentProcess.PrivateMemorySize64);
+                            output.WriteLine("{0}: VirtualMemorySize64 = {1}", linePrefix, currentProcess.VirtualMemorySize64);
+                            output.WriteLine("{0}: WorkingSet64 = {1}", linePrefix, currentProcess.WorkingSet64);
+                            output.WriteLine("{0}: PrivilegedProcessorTime = {1}", linePrefix, currentProcess.PrivilegedProcessorTime);
+                            output.WriteLine("{0}: StartTime = {1}", linePrefix, currentProcess.StartTime);
+                            //output.WriteLine("{0}: ExitTime = {1}", linePrefix, currentProcess.ExitTime);
+                            output.WriteLine("{0}: TotalProcessorTime = {1}", linePrefix, currentProcess.TotalProcessorTime);
+                            output.WriteLine("{0}: UserProcessorTime = {1}", linePrefix, currentProcess.UserProcessorTime);
                         }
                         catch (Exception ex)
                         {
@@ -614,6 +645,7 @@ namespace F2B
 
                     Log.Info(logpfx + "processor \"" + procName + "\" executed");
                     proc = processors[procName];
+                    evtlog.AddProcName(procName);
 
                     try
                     {
@@ -681,6 +713,33 @@ namespace F2B
 
             Log.Info("Log event consumption (thread " + ethread.Number + "): finished");
         }
+
+#if DEBUG
+        private IDictionary<string, ProcPerformance> PerfSum()
+        {
+            IDictionary<string, ProcPerformance> summary = new Dictionary<string, ProcPerformance>();
+            foreach (string procName in processors.Keys)
+            {
+                summary[procName] = new ProcPerformance();
+            }
+
+            for (int i = 0; i < nconsumers; i++)
+            {
+                if (ethreads[i] == null) continue;
+                foreach (string procName in processors.Keys)
+                {
+                    ProcPerformance p = ethreads[i].Performance(procName);
+                    if (p == null) continue;
+                    summary[procName].count += p.count;
+                    summary[procName].sum += p.sum;
+                    if (summary[procName].min > p.min) summary[procName].min = p.min;
+                    if (summary[procName].max < p.max) summary[procName].max = p.max;
+                }
+            }
+
+            return summary;
+        }
+#endif
         #endregion
     }
 }

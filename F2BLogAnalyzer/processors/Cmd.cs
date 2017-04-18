@@ -11,6 +11,7 @@ namespace F2B.processors
         #region Fields
         private string path = null;
         private string args = "";
+        private bool waitForExit = true;
         #endregion
 
         #region Constructors
@@ -26,6 +27,11 @@ namespace F2B.processors
             {
                 args = Environment.ExpandEnvironmentVariables(config.Options["args"].Value);
             }
+
+            if (config.Options["wait_for_exit"] != null)
+            {
+                waitForExit = bool.Parse(config.Options["wait_for_exit"].Value);
+            }
         }
         #endregion
 
@@ -40,15 +46,18 @@ namespace F2B.processors
             ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
 
             // run process without creating window
-            System.Diagnostics.Process process = new System.Diagnostics.Process();
             System.Diagnostics.ProcessStartInfo startInfo = new System.Diagnostics.ProcessStartInfo();
             startInfo.WindowStyle = System.Diagnostics.ProcessWindowStyle.Hidden;
             startInfo.FileName = tpl.Apply(path);
             startInfo.Arguments = tpl.Apply(args);
             startInfo.UseShellExecute = false;
-            process.StartInfo = startInfo;
             Log.Info("CmdProcessor: executing command: " + startInfo.FileName + " " + startInfo.Arguments);
-            process.Start();
+            System.Diagnostics.Process process = System.Diagnostics.Process.Start(startInfo);
+            if (process != null && waitForExit)
+            {
+                process.WaitForExit();
+                evtlog.SetProcData(Name + ".ExitCode", process.ExitCode);
+            }
 
             return goto_next;
         }
@@ -58,6 +67,7 @@ namespace F2B.processors
         {
             output.WriteLine("config path: " + path);
             output.WriteLine("config args: " + args);
+            output.WriteLine("config wait_for_exit: " + waitForExit);
             base.Debug(output);
         }
 #endif

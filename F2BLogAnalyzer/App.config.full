@@ -732,10 +732,35 @@ Expressions:
       <processor name="cmd" type="Cmd">
         <description>Execute command</description>
         <options>
-          <option key="path" value="C:\Windows\System32\WindowsPowerShell\v1.0\powershell.EXE"/>
-          <option key="args" value="-File c:\F2B\test.ps1 ${EventData.EventID}"/>
+          <option key="path" value="c:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe"/>
+          <!-- it is quite tricky to do escaping correctly (actually variable expanded to '"' is still handled incorrectly by following command) -->
+          <!-- also note that problems with command argument variable expansion and escaping can lead to severe security vulnerabilities -->
+          <option key="args" value="-File c:\\F2B\\PSCmd.ps1 &quot;-param1:${Event.Id}&quot; &quot;-param2:${Event.Address}&quot; &quot;-param3:${Event.Username}&quot;"/>
+          <option key="wait_for_exit" value="true"/>
         </options>
         <goto on_error_next="true"/>
+      </processor>
+      <processor name="psfunct" type="PSFunct">
+        <description>Call powershell function implemented directly here or in external file and store result in procname.Result</description>
+        <options>
+          <option key="code" value="function Test-Me($param1, $param2, $param3) { $ret = $param1 + ';' + $param2 + ';' + $param3;Add-Content C:\F2B\PSFunct.out &quot;$ret&quot;;$ret }"/>
+          <!-- <option key="script" value="c:\F2B\PSFunct.ps1"/> -->
+          <option key="function" value="Test-Me"/>
+          <option key="params" value="param1,param2,param3"/>
+          <option key="param.param1" value="${Event.Id}"/>
+          <option key="param.param2" value="${Event.Address}"/>
+          <option key="param.param3" value="${Event.Username}"/>
+        </options>
+      </processor>
+      <processor name="psproc" type="PSProc">
+        <description>Call processor implemented in powershell</description>
+        <options>
+          <option key="script" value="c:\F2B\PSProc.ps1"/>
+          <option key="funct_start" value="PSProcStart"/>
+          <option key="funct_stop" value="PSProcStop"/>
+          <option key="funct_execute" value="PSProcExecute"/>
+          <!-- <option key="threadsafe" value="true"/> "false" not implemented -->
+        </options>
       </processor>
       <processor name="action_test_logger" type="Logger">
         <description>Log all selected events in log file</description>

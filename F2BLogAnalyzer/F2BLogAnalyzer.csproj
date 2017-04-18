@@ -59,6 +59,7 @@
     <Reference Include="System.Core" />
     <Reference Include="System.DirectoryServices" />
     <Reference Include="System.DirectoryServices.Protocols" />
+    <Reference Include="System.Management.Automation" />
     <Reference Include="System.Messaging" />
     <Reference Include="System.Runtime.Caching" />
     <Reference Include="System.ServiceProcess" />
@@ -94,6 +95,8 @@
     <Compile Include="processors\Login.cs" />
     <Compile Include="processors\Mail.cs" />
     <Compile Include="processors\Parallel.cs" />
+    <Compile Include="processors\PSProc.cs" />
+    <Compile Include="processors\PSFunct.cs" />
     <Compile Include="processors\Range.cs" />
     <Compile Include="processors\RangeFile.cs" />
     <Compile Include="processors\Sleep.cs" />

@@ -95,8 +95,8 @@ namespace F2B
             // normalize input expression
             expr = expr.ToLower();
             expr = expr.Replace(" ", "");
-            expr = expr.Replace("true", "1");
-            expr = expr.Replace("false", "0");
+            expr = expr.Replace("true", "1"); // NOTE: truetrue -> 11 ?!
+            expr = expr.Replace("false", "0"); // NOTE: falsefalse -> 00 ?!
 
             for (int pos = 0; pos < expr.Length;)
             {
@@ -400,6 +400,8 @@ namespace F2B
                     }
                     else
                     {
+                        // NOTE: append unexpanded variable just to make clear
+                        // to the user that default value is necessary
                         output.Append("${");
                         output.Append(key);
                         output.Append("}");
@@ -497,6 +499,10 @@ namespace F2B
                         }
                         else
                         {
+                            // NOTE: append unevaluated string just to make clear
+                            // to the user that thare was an error in expression
+                            // and default value should be used to deal with such
+                            // the expression that could lead to eval errors
                             output.Append("$(");
                             output.Append(key);
                             output.Append(")");
