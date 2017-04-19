@@ -65,7 +65,8 @@ namespace F2B.processors
             watcher = new FileSystemWatcher();
             watcher.Path = dirname;
             watcher.Filter = Path.GetFileName(filename);
-            watcher.NotifyFilter = NotifyFilters.LastWrite;
+            watcher.NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.LastWrite;
+            watcher.Created += new FileSystemEventHandler((s, e) => FileWatcherChanged(s, e));
             watcher.Changed += new FileSystemEventHandler((s, e) => FileWatcherChanged(s, e));
         }
         #endregion

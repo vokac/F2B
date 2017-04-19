@@ -47,7 +47,8 @@ namespace F2B.processors
                         watcher = new FileSystemWatcher();
                         watcher.Path = dirname;
                         watcher.Filter = Path.GetFileName(script);
-                        watcher.NotifyFilter = NotifyFilters.LastWrite;
+                        watcher.NotifyFilter = NotifyFilters.CreationTime | NotifyFilters.LastWrite;
+                        watcher.Created += new FileSystemEventHandler((s, e) => FileWatcherChanged(s, e));
                         watcher.Changed += new FileSystemEventHandler((s, e) => FileWatcherChanged(s, e));
                     }
                     else
@@ -127,7 +128,7 @@ namespace F2B.processors
             Log.Info(GetType() + "[" + Name + "]: powershell initialization started");
 
             PowerShell newps = PowerShell.Create();
-            newps.AddScript(code, false);
+            newps.AddScript(newcode, false);
             newps.Invoke();
 
             lock (this)
@@ -166,6 +167,7 @@ namespace F2B.processors
         public override void Start()
         {
             InitializePowershell();
+
             if (watcher != null)
             {
                 watcher.EnableRaisingEvents = true;
