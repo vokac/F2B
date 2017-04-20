@@ -112,9 +112,7 @@
     <Compile Include="Utils.cs" />
   </ItemGroup>
   <ItemGroup>
-    <None Include="App.config">
-      <SubType>Designer</SubType>
-    </None>
+    <None Include="App.config" />
     <None Include="App.config.full" />
     <None Include="App.config.minimal" />
   </ItemGroup>
@@ -150,6 +148,7 @@
   </Target>
   -->
   <Target Name="AfterBuild">
+    <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(TargetDir)\$(TargetName).all$(TargetExt)" ContinueOnError="true" />
     <Copy SourceFiles="App.config" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
     <Copy SourceFiles="App.config.full" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
     <Copy SourceFiles="App.config.minimal" DestinationFolder="$(OutputPath)" ContinueOnError="true" />

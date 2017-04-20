@@ -8,7 +8,7 @@
     <OutputType>Exe</OutputType>
     <AppDesignerFolder>Properties</AppDesignerFolder>
     <RootNamespace>F2B</RootNamespace>
-    <AssemblyName>F2BLogAnalyzer.nomsmq</AssemblyName>
+    <AssemblyName>F2BLogAnalyzer</AssemblyName>
     <TargetFrameworkVersion>v4.5</TargetFrameworkVersion>
     <FileAlignment>512</FileAlignment>
     <AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
@@ -146,6 +146,7 @@
   </Target>
   -->
   <Target Name="AfterBuild">
+    <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(TargetDir)\$(TargetName).nomsmq$(TargetExt)" ContinueOnError="true" />
     <Copy SourceFiles="App.config" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
     <Copy SourceFiles="App.config.full" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
     <Copy SourceFiles="App.config.minimal" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
