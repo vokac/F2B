@@ -31,7 +31,7 @@ namespace F2B
         long Id { get; }
         BaseInput Input { get; }
         DateTime Created { get; }
-        string Hostname { get; }
+        string Machine { get; }
         object LogData { get; }
         IReadOnlyCollection<string> ProcNames { get; }
         void AddProcName(string name);
@@ -48,7 +48,7 @@ namespace F2B
         public long Id { get; private set; }
         public BaseInput Input { get; set; }
         public DateTime Created { get; set; }
-        public string Hostname { get; set; }
+        public string Machine { get; set; }
         public object LogData { get; set; }
         public IReadOnlyCollection<string> ProcNames
         {
@@ -71,13 +71,13 @@ namespace F2B
         #endregion
 
         #region Constructors
-        public EventEntry(BaseInput input, DateTime created, string hostname, object ldata)
+        public EventEntry(BaseInput input, DateTime created, string machine, object ldata)
         {
             Id = Interlocked.Increment(ref _counter);
 
             Input = input;
             Created = created;
-            Hostname = hostname;
+            Machine = machine;
             LogData = ldata;
 
             _procData = new Dictionary<string, object>();
@@ -87,9 +87,9 @@ namespace F2B
             _procData["Environment.MachineName"] = System.Environment.MachineName;
             // input data
             _procData["Event.Id"] = Id.ToString();
-            _procData["Event.Time"] = Created.ToString();
+            _procData["Event.TimeCreated"] = Created.ToString();
             _procData["Event.Timestamp"] = Created.Ticks.ToString();
-            _procData["Event.Hostname"] = (Hostname != null ? Hostname : "");
+            _procData["Event.MachineName"] = (Machine != null ? Machine : "");
             _procData["Event.Type"] = Input.InputType;
             _procData["Event.Input"] = Input.InputName;
             _procData["Event.Selector"] = Input.SelectorName;
@@ -104,7 +104,7 @@ namespace F2B
             Id = evt.Id;
 
             Created = evt.Created;
-            Hostname = evt.Hostname;
+            Machine = evt.Machine;
             Input = evt.Input;
             LogData = evt.LogData;
 

@@ -1007,7 +1007,7 @@ namespace F2B.processors
                         Log.Warn("Fail2ban[" + Name + "]: logtime from future ("
                             + ((logtime - now) / TimeSpan.TicksPerSecond) + " seconds) for "
                             + evtlog.Input + "/" + evtlog.Input.SelectorName
-                            + " from " + evtlog.Hostname);
+                            + " from " + evtlog.Machine);
                     }
                 }
 
