@@ -154,7 +154,7 @@ Get-EventLog -LogName Security
 		| Format-Table -AutoSize -Wrap
 ```
 or
-```
+```powershell
 $query = @"
 <QueryList>
   <Query Id="0" Path="Microsoft-Windows-Security-Auditing">
@@ -844,7 +844,7 @@ Example of simple `c:\F2B\PSCmd.ps1` powershell script that deals with arguments
 passed by the `Cmd` processor to powershell executable that defined in the
 sample configuration described above.
 
-```
+```powershell
 param (
    [string]$param1 = "empty",
    [string]$param2 = "empty",
@@ -880,7 +880,7 @@ stored in procname.Result event log dictionary.
 Example of simple `c:\F2B\PSFunct.ps1` powershell script used in `PSFunct`
 processor configuration sample.
 
-```
+```powershell
 function Test-Me($param1, $param2)
 {
 	$ret = $param1 + ';' + $param2
@@ -916,7 +916,7 @@ you have access to the same data as in `C#` processor.
 Example of simple `PSProc.ps1` powershell script that can be called
 by `PSProc` module.
 
-```
+```powershell
 function PSProcStart()
 {
    Add-Content C:\F2B\PSProc.out "PSProcStart"
