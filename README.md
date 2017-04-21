@@ -762,13 +762,17 @@ and fail2ban module should specify a limit to prevent F2BLogAnalysis
 resource exhaution).
 
 You can specify more tresholds within one `fail2ban` processor instance.
-This can be used to specify smaler soft limit where you just send mail
-notification and hard limit that is used to add firewall rules to block
-offending address range. Firewall rule is automatically removed after
-`bantime`.
+This can be used to specify smaler soft limit where you just log info in
+text file or send mail notification (using `logger` or `mail` processor)
+and hard limit that can be used to add firewall rules to block offending
+address range (e.g. `fail2banWFP`). For each treshold it is possible
+to specify `bantime` that is not really used by this processor except
+it is added to the event variable list. This variable can be later used
+by processors that really set firewall rules to set their expiration
+time.
 
-It is also possible to specify several different `history` methods how to
-store number of recently failed logins.
+Fail2ban has to keep track of recent events and it is possible to choose
+best way how to store these data using `history` configuration options:
 
 * `all` - store all timestamps for `findtime` interval (can use a lot of memory
   in case of high `maxretry` treshold)
@@ -855,7 +859,7 @@ It is much better and more efficient to implement required functionality
 in powershell and use it together with `PSFunct` or `PSProc` processors.
 Our `Cmd` processor configuration example just shows how to use this processor,
 but calling powershell code this way is at least order of magnitude slower
-than our dedicated `PS*` processors.
+than our dedicated `PSFunct` and `PSProc` processors.
 
 By default this processor wait for executable to finish (`wait_for_exit`)
 and store exit code in procname.ExitCode event log dictionary.
