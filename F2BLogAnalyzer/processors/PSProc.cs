@@ -68,6 +68,7 @@ namespace F2B.processors
             Log.Info(GetType() + "[" + Name + "]: powershell initialization started");
             powershell = PowerShell.Create();
             powershell.AddScript(code, false);
+            powershell.AddParameter("proc", this);
             powershell.Invoke();
             Log.Info(GetType() + "[" + Name + "]: powershell initialization finished");
         }
@@ -118,11 +119,11 @@ namespace F2B.processors
                 foreach (PSObject result in powershell.Invoke())
                 {
                     string res = result.BaseObject.ToString();
-                    if (res.StartsWith("NEXT"))
+                    if (res == "NEXT")
                     {
                         ret = goto_next;
                     }
-                    else if (res.StartsWith("ERROR"))
+                    else if (res == "ERROR")
                     {
                         ret = goto_error;
                     }
@@ -132,7 +133,7 @@ namespace F2B.processors
                     }
                     else
                     {
-                        Log.Info(GetType() + "[" + Name + "]: unexpected return value: " + res);
+                        Log.Warn(GetType() + "[" + Name + "]: unexpected return value: " + res);
                     }
                 }
             }
