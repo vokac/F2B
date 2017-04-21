@@ -3,6 +3,7 @@
 #
  param (
     [string]$config = "Release",
+    [string]$platform = "x86", #"Any CPU",
     [string]$VCS = "F2BShared\VCS.resx"
  )
  
@@ -65,39 +66,47 @@ if ((Get-Command "msbuild.exe" -ErrorAction SilentlyContinue) -eq $null) {
    Exit
 }
 
-Write-Host "Starting ${config} build"
-msbuild /t:Rebuild /p:Configuration=${config}
-Write-Host "Finished ${config} build"
+Write-Host "Starting ${config} ${platform} build"
+msbuild /t:Rebuild /p:Configuration=${config} /p:Platform="${platform}"
+Write-Host "Finished ${config} ${platform} build"
 
 
 # install
 $CURR = Get-Date -format "yyyyMMdd"
-$PKGPATH = "F2B.${CURR}.${config}"
+$PKGPATH = "F2B.${CURR}.${config}.${platform}"
 Write-Host "Create installation package in ""${PKGPATH}"""
 If (Test-Path "${PKGPATH}") {
    Write-Host "[ERROR] Installation package directory ""${PKGPATH}"" already exists"
    Exit
 }
 
+$cppdir = if ($platform -eq "x64") {"x64\${config}"} else {"${config}"}
 New-Item -Type directory "${PKGPATH}" | Out-Null
-Copy-Item "README.md" "${PKGPATH}"
-Copy-Item "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer*.exe" "${PKGPATH}"
-#Copy-Item "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer*.config" "${PKGPATH}"
-Copy-Item "F2BLogAnalyzer\App.config*" "${PKGPATH}"
-Copy-Item "F2BFirewall\bin\${config}\F2BFirewall.exe" "${PKGPATH}"
-Copy-Item "F2BFirewall\bin\${config}\F2BFirewall.exe.config" "${PKGPATH}"
-Copy-Item "F2BQueue\bin\${config}\F2BQueue.exe" "${PKGPATH}"
-Copy-Item "F2BQueue\bin\${config}\F2BQueue.exe.config" "${PKGPATH}"
-Copy-Item "${config}\F2BWFP.dll" "${PKGPATH}"
+Copy-Item -Verbose "README.md" "${PKGPATH}"
+Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer*.exe" "${PKGPATH}"
+#Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer*.config" "${PKGPATH}"
+Copy-Item -Verbose "F2BLogAnalyzer\App.config*" "${PKGPATH}"
+Copy-Item -Verbose "F2BFirewall\bin\${config}\F2BFirewall.exe" "${PKGPATH}"
+Copy-Item -Verbose "F2BFirewall\bin\${config}\F2BFirewall.exe.config" "${PKGPATH}"
+Copy-Item -Verbose "F2BQueue\bin\${config}\F2BQueue.exe" "${PKGPATH}"
+Copy-Item -Verbose "F2BQueue\bin\${config}\F2BQueue.exe.config" "${PKGPATH}"
+Copy-Item -Verbose "${cppdir}\F2BWFP.dll" "${PKGPATH}"
+Copy-Item -Verbose "F2BLogAnalyzer\tests\*.ps1" "${PKGPATH}"
+foreach ($path in @("F2BLogAnalyzer\tests\LogEvent.exe")) {
+   if (Test-Path "$path") {
+      Copy-Item -Verbose "${path}" "${PKGPATH}"
+   }
+}
 # copy required visual studio redistributable files
 # (this only works with visual studio 2015)
+$libdir = if ($platform -eq "x64") {"${Env:windir}\SysWOW64"} else {"${Env:windir}\system32"}
 $redis = @('concrt140.dll', 'mfc140.dll', 'mfcm140.dll', 'msvcp140.dll', 'ucrtbased.dll', 'vcamp140.dll', 'vccorlib140.dll', 'vcomp140.dll', 'vcruntime140.dll')
 foreach ($file in $redis) {
    If ($config -eq "Debug") {
       $file = $file -replace '.dll', 'd.dll'
    }
-   $path = "${Env:windir}\system32\${file}"
+   $path = "${libdir}\${file}"
    If (Test-Path "${path}") {
-      Copy-Item "${path}" "${PKGPATH}"
+      Copy-Item -Verbose "${path}" "${PKGPATH}"
    }
 }

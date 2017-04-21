@@ -1339,7 +1339,7 @@ UInt64 Firewall::AddIPv4(String^ name, FirewallConditions^ conditions, UInt64 we
 		throw gcnew System::ArgumentException("Firewall::AddIPv4: no conditions");
 	}
 
-	return this->Add(name, conditions->LayerIPv4(), *conditions->GetIPv4(), conditions->CountIPv4(), weight, permit, persistent);
+	return this->Add(name, conditions->LayerIPv4(), *conditions->GetIPv4(), (UInt32) conditions->CountIPv4(), weight, permit, persistent);
 }
 UInt64 Firewall::AddIPv6(String^ name, FirewallConditions^ conditions, UInt64 weight, bool permit, bool persistent)
 {
@@ -1351,7 +1351,7 @@ UInt64 Firewall::AddIPv6(String^ name, FirewallConditions^ conditions, UInt64 we
 		throw gcnew System::ArgumentException("Firewall::AddIPv6: no conditions");
 	}
 
-	return this->Add(name, conditions->LayerIPv6(), *conditions->GetIPv6(), conditions->CountIPv6(), weight, permit, persistent);
+	return this->Add(name, conditions->LayerIPv6(), *conditions->GetIPv6(), (UInt32) conditions->CountIPv6(), weight, permit, persistent);
 }
 
 UInt64 Firewall::Add(String^ name, const GUID &layerKey, FWPM_FILTER_CONDITION &fwpFilterCondition, UInt32 iFilterCondition, UInt64 weight, bool permit, bool persistent)
