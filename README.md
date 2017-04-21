@@ -37,10 +37,10 @@ c:\F2B\F2BFirewall.exe add-wfp
 * register F2B as windows service
 ```
 c:\F2B\F2BLogAnalyzer.nomsmq.exe install \
-        -c c:\F2B\F2BLogAnalyzer.config \
+        -c c:\F2B\F2BLogAnalyzer.exe.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
 ```
-* modify configuration file `F2BLogAnalyzer.config` according your requirements
+* modify configuration file `F2BLogAnalyzer.exe.config` according your requirements
 * start F2B service
 ```
 sc start F2BLA
@@ -1302,7 +1302,7 @@ only by command line arguments. TODO
 ```
 c:\F2B\F2BFirewall.exe add-wfp
 c:\F2B\F2BLogAnalyzer.exe install \
-        -c c:\F2B\F2BLogAnalyzer.config \
+        -c c:\F2B\F2BLogAnalyzer.exe.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
 sc start F2BLA
 ```
@@ -1313,7 +1313,7 @@ sc start F2BLA
 ```
 c:\F2B\F2BFirewall.exe add-wfp
 c:\F2B\F2BLogAnalyzer.nomsmq.exe install \
-        -c c:\F2B\F2BLogAnalyzer.config \
+        -c c:\F2B\F2BLogAnalyzer.exe.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
 sc start F2BLA
 ```
@@ -1325,7 +1325,7 @@ sc start F2BLA
 
 ```
 c:\F2B\F2BLogAnalyzer.standalone.exe install \
-        -c c:\F2B\F2BLogAnalyzer.config \
+        -c c:\F2B\F2BLogAnalyzer.exe.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
 sc start F2BLA
 ```
@@ -1336,7 +1336,7 @@ sc start F2BLA
  ```
 c:\F2B\F2BLogAnalyzer.exe install \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR \
-        -c c:\F2B\F2BLogAnalyzer.config
+        -c c:\F2B\F2BLogAnalyzer.exe.config
 sc start F2BLA
 ```
  * message queue machine (queuehost)
