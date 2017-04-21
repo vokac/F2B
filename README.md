@@ -17,6 +17,36 @@ Requirements
 * Visual Studio Community 2015 (optional, for building sources)
 
 
+Quick Start
+-----------
+
+* checkout sources from git and go to the new F2B directory
+```
+git clone https://github.com/vokac/F2B.git
+cd F2B
+```
+* build within MSBuild Command Prompt
+```
+powershell -File build.ps1 -config Debug x86
+```
+* copy all files from build output directory `F2B.$(date).$(release).$(arch)` to `c:\F2B`
+* update windows configuration to accept firewall rules from F2B
+```
+c:\F2B\F2BFirewall.exe add-wfp
+```
+* register F2B as windows service
+```
+c:\F2B\F2BLogAnalyzer.nomsmq.exe install \
+        -c c:\F2B\F2BLogAnalyzer.config \
+        -g c:\F2B\F2BLogAnalyzer.log -l ERROR
+```
+* modify configuration file `F2BLogAnalyzer.config` according your requirements
+* start F2B service
+```
+sc start F2BLA
+```
+
+
 Building from sources
 ---------------------
 
@@ -32,7 +62,7 @@ Building from sources
     of the C# code and compile dll library as "Release|x64"
 * build with Visual Studio 2015 command line
   * start MSBuild Command Prompt for VS2015
-  * execute `powershell -File build.ps1 [-config Release|Debug]`
+  * execute `powershell -File build.ps1 [-config Release|Debug] [-platform x86|x64]`
 
 Installation
 ------------
@@ -1272,7 +1302,7 @@ only by command line arguments. TODO
 ```
 c:\F2B\F2BFirewall.exe add-wfp
 c:\F2B\F2BLogAnalyzer.exe install \
-        -c c:\F2B\F2BLogAnalyzer.exe.config \
+        -c c:\F2B\F2BLogAnalyzer.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
 sc start F2BLA
 ```
@@ -1283,7 +1313,7 @@ sc start F2BLA
 ```
 c:\F2B\F2BFirewall.exe add-wfp
 c:\F2B\F2BLogAnalyzer.nomsmq.exe install \
-        -c c:\F2B\F2BLogAnalyzer.exe.config \
+        -c c:\F2B\F2BLogAnalyzer.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
 sc start F2BLA
 ```
@@ -1295,7 +1325,7 @@ sc start F2BLA
 
 ```
 c:\F2B\F2BLogAnalyzer.standalone.exe install \
-        -c c:\F2B\F2BLogAnalyzer.exe.config \
+        -c c:\F2B\F2BLogAnalyzer.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
 sc start F2BLA
 ```
@@ -1306,7 +1336,7 @@ sc start F2BLA
  ```
 c:\F2B\F2BLogAnalyzer.exe install \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR \
-        -c c:\F2B\F2BLogAnalyzer.exe.config
+        -c c:\F2B\F2BLogAnalyzer.config
 sc start F2BLA
 ```
  * message queue machine (queuehost)
