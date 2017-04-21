@@ -713,14 +713,20 @@ CREATE TABLE `f2b` (
 <processor name="logger_sql" type="LoggerSQL">
   <description>Log all selected events in MySQL database using ODBC</description>
   <options>
-    <!-- MySQL ODBC OPTION AUTO_RECONNECT(4194304) -->
+    <!--
+    # MySQL ODBC OPTION AUTO_RECONNECT(4194304)
+    # https://dev.mysql.com/doc/connector-odbc/en/connector-odbc-configuration-connection-parameters.html#codbc-dsn-option-flags
     <option key="odbc" value="DRIVER={MySQL ODBC 3.51 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
-    <!-- MSSQL ODBC connection with autoreconnect enabled
-    <option key="odbc" value="DRIVER={ODBC Driver 11 for SQL Server};SERVER=server_that_supports_connection_resiliency;UID=username;PWD=secret;ConnectRetryCount=2;ConnectRetryInterval=1"/> -->
+    <option key="odbc" value="DRIVER={MySQL ODBC 5.1 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
+    <option key="odbc" value="DRIVER={MySQL ODBC 5.3 Unicode Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
+    # MSSQL ODBC connection with autoreconnect enabled
+    <option key="odbc" value="DRIVER={ODBC Driver 11 for SQL Server};SERVER=server_that_supports_connection_resiliency;UID=username;PWD=secret;ConnectRetryCount=2;ConnectRetryInterval=1"/>
+    -->
+    <option key="odbc" value="DRIVER={MySQL ODBC 3.51 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
     <option key="table" value="f2b"/>
     <option key="columns" value="id,timestamp,hostname,input,selector,status,event,record,machine,created,provider,address,port,username,domain"/>
     <option key="column.timestamp" value="${Event.Timestamp}"/>
-    <option key="column.hostname" value="${Event.Hostname}"/>
+    <option key="column.hostname" value="${Event.MachineName}"/>
     <option key="column.id" value="${Event.Id}"/>
     <option key="column.input" value="${Event.Input}"/>
     <option key="column.selector" value="${Event.Selector}"/>
@@ -729,7 +735,7 @@ CREATE TABLE `f2b` (
     <option key="column.substatus" value="${EventData.SubStatus:=-1}"/>
     <option key="column.event" value="${Event.EventId}"/>
     <option key="column.record" value="${Event.RecordId}"/>
-    <option key="column.machine" value="${Event.MachineName}"/>
+    <option key="column.machine" value="${Environment.MachineName}"/>
     <option key="column.created" value="${Event.TimeCreated}"/>
     <option key="column.provider" value="${Event.ProviderName}"/>
     <option key="column.address" value="${Event.Address}"/>
@@ -745,11 +751,37 @@ CREATE TABLE `f2b` (
 
 #### Fail2ban
 
-Provides fail to ban functionality.
+Provides fail to ban functionality by counting login failure events
+from client IP address (range) that reach this processor within given
+time period `findtime` and calls another chain of `action` processors
+when number of events reaches `maxretry` treshold. You must specify
+variable `address` which is evaluated to the user IPv4/IPv6 address
+and its prefix length that is used for grouping address ranges
+(e.g. IPv6 client device can easily use 2^64 different addresses
+and fail2ban module should specify a limit to prevent F2BLogAnalysis
+resource exhaution).
+
+You can specify more tresholds within one `fail2ban` processor instance.
+This can be used to specify smaler soft limit where you just send mail
+notification and hard limit that is used to add firewall rules to block
+offending address range. Firewall rule is automatically removed after
+`bantime`.
+
+It is also possible to specify several different `history` methods how to
+store number of recently failed logins.
+
+* `all` - store all timestamps for `findtime` interval (can use a lot of memory
+  in case of high `maxretry` treshold)
+* `one` - just one number to store history of failed logins, but it is less
+  precise in tracing / removing exipred failed logins
+* `fixed` - fixed `count` of history entries that represents number of failed
+  logins in the same size history intervals; you can specify smaller weight
+  for older failed logins by `decay` parameter lower than 1.0
+* `rrd` - history entries with variable intervals (not yet implemented)
 
 ```xml
 <processor name="fail2ban" type="Fail2ban">
-  <description>Test fail2ban processor</description>
+  <description>Fail to ban processor</description>
   <options>
     <!-- address comes usually directly from input parsers -->
     <option key="address" value="Event.Address"/>
