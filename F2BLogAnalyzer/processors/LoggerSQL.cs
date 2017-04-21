@@ -122,7 +122,11 @@ namespace F2B.processors
                 catch (Exception ex)
                 {
                     Log.Error("Execption in SQL async thread: " + ex.Message);
-                    break;
+
+                    if (conn != null && conn.State != ConnectionState.Closed)
+                    {
+                        conn.Close();
+                    }
                 }
             }
         }
@@ -151,6 +155,8 @@ namespace F2B.processors
                         conn.Open();
                         //conn.OpenAsync(asyncCanceled.Token);
                      }
+
+                     break;
                 }
                 catch (OdbcException ex)
                 {
