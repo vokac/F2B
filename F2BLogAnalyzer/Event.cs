@@ -565,9 +565,19 @@ namespace F2B
                             foreach (BaseProcessor p in processors.Values)
                             {
                                 output.WriteLine("========== " + p.GetType() + "[" + p.Name + "] processor ==========");
-                                p.Debug(output);
+                                try
+                                {
+                                    p.Debug(output);
+                                }
+                                catch (Exception ex)
+                                {
+                                    Log.Error(logpfx + "Unable to dump " + p.GetType() + "[" + p.Name + "] debug info: " + ex.Message);
+                                }
                             }
 
+                            output.WriteLine("========== process environment ==========");
+                            output.WriteLine("Environment.Is64BitProcess: {0}", Environment.Is64BitProcess);
+                            output.WriteLine("Environment.Is64BitOperatingSystem: {0}", Environment.Is64BitOperatingSystem);
                             output.WriteLine("========== processors performance summary ==========");
                             IDictionary<string, ProcPerformance> summary = PerfSum();
                             foreach (string perfProcName in processors.Keys)
