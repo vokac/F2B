@@ -83,9 +83,11 @@ If (Test-Path "${PKGPATH}") {
 $cppdir = if ($platform -eq "x64") {"x64\${config}"} else {"${config}"}
 New-Item -Type directory "${PKGPATH}" | Out-Null
 Copy-Item -Verbose "README.md" "${PKGPATH}"
-Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer*.exe" "${PKGPATH}"
-#Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer*.config" "${PKGPATH}"
-Copy-Item -Verbose "F2BLogAnalyzer\App.config*" "${PKGPATH}"
+Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer.*.exe" "${PKGPATH}"
+Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer*.config*" "${PKGPATH}"
+#Copy-Item -Verbose "F2BLogAnalyzer\App.config" "${PKGPATH}\F2BLogAnalyzer.exe.config"
+#Copy-Item -Verbose "F2BLogAnalyzer\App.config.full" "${PKGPATH}\F2BLogAnalyzer.exe.config.full"
+#Copy-Item -Verbose "F2BLogAnalyzer\App.config.minimal" "${PKGPATH}\F2BLogAnalyzer.exe.config.minimal"
 Copy-Item -Verbose "F2BFirewall\bin\${config}\F2BFirewall.exe" "${PKGPATH}"
 Copy-Item -Verbose "F2BFirewall\bin\${config}\F2BFirewall.exe.config" "${PKGPATH}"
 Copy-Item -Verbose "F2BQueue\bin\${config}\F2BQueue.exe" "${PKGPATH}"

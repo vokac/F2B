@@ -168,8 +168,8 @@
   -->
   <Target Name="AfterBuild">
     <Copy SourceFiles="$(TargetPath)" DestinationFiles="$(TargetDir)\$(TargetName).nomsmq$(TargetExt)" ContinueOnError="true" />
-    <Copy SourceFiles="App.config" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
-    <Copy SourceFiles="App.config.full" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
-    <Copy SourceFiles="App.config.minimal" DestinationFolder="$(OutputPath)" ContinueOnError="true" />
+    <Copy SourceFiles="App.config" DestinationFiles="$(TargetDir)\$(TargetFileName).config" ContinueOnError="true" />
+    <Copy SourceFiles="App.config.full" DestinationFiles="$(TargetDir)\$(TargetFileName).config.full" ContinueOnError="true" />
+    <Copy SourceFiles="App.config.minimal" DestinationFiles="$(TargetDir)\$(TargetFileName).config.minimal" ContinueOnError="true" />
   </Target>
 </Project>

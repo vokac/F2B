@@ -69,7 +69,7 @@ Installation
 
 ### Executables and libraries
 
-No installation program exists and all binaries (`F2BLogAnalyzer.exe`,
+No installation program exists and all binaries (`F2BLogAnalyzer.all.exe`,
 `F2BLogAnalyzer.nomsmq.exe`, `F2BLogAnalyzer.standalone.exe`, `F2BQueue.exe`,
 `F2BFirewall.exe`, `F2BWFP.dll`) must be placed in one directory
 (e.g. `c:\F2B`). F2B service code was written in C# which requires at least
@@ -1301,7 +1301,7 @@ only by command line arguments. TODO
 
 ```
 c:\F2B\F2BFirewall.exe add-wfp
-c:\F2B\F2BLogAnalyzer.exe install \
+c:\F2B\F2BLogAnalyzer.all.exe install \
         -c c:\F2B\F2BLogAnalyzer.exe.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
 sc start F2BLA
@@ -1334,7 +1334,7 @@ sc start F2BLA
 
  * log analyzer machine
  ```
-c:\F2B\F2BLogAnalyzer.exe install \
+c:\F2B\F2BLogAnalyzer.all.exe install \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR \
         -c c:\F2B\F2BLogAnalyzer.exe.config
 sc start F2BLA
