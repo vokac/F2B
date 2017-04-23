@@ -20,7 +20,7 @@ namespace F2B.processors
         private IList<Tuple<string, string>> columns;
         private string insert;
         private int timeout = 15;
-        private OdbcConnection conn;
+        private OdbcConnection conn = null;
         private bool stop;
         private Object syncLock = new Object();
         private bool async = true;
@@ -80,8 +80,6 @@ namespace F2B.processors
                 throw new InvalidDataException("required configuration option columns missing or empty");
             }
 
-            conn = null;
-
             if (config.Options["timeout"] != null)
             {
                 timeout = int.Parse(config.Options["timeout"].Value);
@@ -107,31 +105,22 @@ namespace F2B.processors
                     IList<Tuple<string, string>> colvals;
                     if (asyncQueue.TryTake(out colvals, -1, asyncCanceled.Token))
                     {
-                        if (conn.State != ConnectionState.Open)
-                        {
-                            OpenSQL();
-                        }
-                        SaveSQL(colvals);
+                        Save(colvals);
                     }
                 }
                 catch (OperationCanceledException ex)
                 {
-                    Log.Info("Canceled SQL async take (queue size: " + asyncQueue.Count + "): " + ex.Message);
+                    Log.Info("Canceled async take (queue size: " + asyncQueue.Count + "): " + ex.Message);
                     break;
                 }
                 catch (Exception ex)
                 {
-                    Log.Error("Execption in SQL async thread: " + ex.Message);
-
-                    if (conn != null && conn.State != ConnectionState.Closed)
-                    {
-                        conn.Close();
-                    }
+                    Log.Error("Execption in async thread: " + ex.Message);
                 }
             }
         }
 
-        private void OpenSQL(int retry = -1)
+        private bool Open(int retry = -1)
         {
             int cnt = 0;
 
@@ -156,7 +145,7 @@ namespace F2B.processors
                         //conn.OpenAsync(asyncCanceled.Token);
                      }
 
-                     break;
+                     return true;
                 }
                 catch (OdbcException ex)
                 {
@@ -167,24 +156,57 @@ namespace F2B.processors
 
                 cnt++;
             }
+
+            return false;
         }
 
-        private void SaveSQL(IList<Tuple<string, string>> colvals)
+        private void Save(IList<Tuple<string, string>> colvals, int retry = -1)
         {
-            try {
-                using (OdbcCommand cmd = new OdbcCommand(insert, conn))
+            bool opened = false;
+
+            while (true)
+            {
+                if (conn.State != ConnectionState.Open)
                 {
-                    foreach (var item in colvals)
+                    if (!Open(retry))
                     {
-                        cmd.Parameters.Add(new OdbcParameter(item.Item1, item.Item2));
+                        throw new Exception("unable to open database connection");
                     }
 
-                    cmd.ExecuteNonQuery();
+                    opened = true;
                 }
-            }
-            catch (InvalidOperationException ex)
-            {
-                Log.Warn("ODBC Exception (invalid operation): " + ex.Message);
+
+                try {
+                    using (OdbcCommand cmd = new OdbcCommand(insert, conn))
+                    {
+                        foreach (var item in colvals)
+                        {
+                            cmd.Parameters.Add(new OdbcParameter(item.Item1, item.Item2));
+                        }
+
+                        cmd.ExecuteNonQuery();
+                    }
+
+                    // we sucessfully stored data
+                    break;
+                }
+                catch (ArgumentException ex)
+                {
+                    // invalid ODBC parameter - no reason to retry
+                    throw new Exception("ODBC Parameter problem: " + ex.Message);
+                }
+                catch (InvalidOperationException ex)
+                {
+                    // may be connection was closed/bad?! if we did not made attempt
+                    // to reconnect earlier than close connection and retry once more
+                    if (opened)
+                    {
+                        throw new Exception("ODBC Exception (invalid operation): " + ex.Message);
+                    }
+
+                    Log.Warn("ODBC Exception (invalid operation): " + ex.Message + " (retry)");
+                    conn.Close();
+                }
             }
         }
 
@@ -248,11 +270,7 @@ namespace F2B.processors
             {
                 lock (syncLock)
                 {
-                    if (conn.State != ConnectionState.Open)
-                    {
-                        OpenSQL(1);
-                    }
-                    SaveSQL(colvals);
+                    Save(colvals, 1);
                 }
             }
             else
