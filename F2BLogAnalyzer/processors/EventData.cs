@@ -41,16 +41,24 @@ namespace F2B.processors
             var ns = doc.Root.GetDefaultNamespace();
             namespaces.AddNamespace("ns", ns.NamespaceName);
 
-            //foreach (var element in doc.XPathSelectElements("/ns:Event/ns:System/*", namespaces))
-            //{
-            //    evtlog.SetProcData("Event.System." + element.Name.LocalName, element.Value);
-            //}
+            foreach (var element in doc.XPathSelectElements("/ns:Event/ns:System/*", namespaces))
+            {
+                if (!string.IsNullOrWhiteSpace(element.Value))
+                {
+                    evtlog.SetProcData("EventSystem." + element.Name.LocalName, element.Value);
+                }
+                if (element.HasAttributes)
+                {
+                    foreach (var attribute in element.Attributes())
+                    {
+                        evtlog.SetProcData("EventSystem." + element.Name.LocalName + "." + attribute.Name, attribute.Value);
+                    }
+                }
+            }
 
             int dataCnt = 0;
             foreach (var element in doc.XPathSelectElements("/ns:Event/ns:EventData/ns:Data", namespaces))
             {
-                var path = element.AncestorsAndSelf().Select(e => e.Name.LocalName).Reverse();
-                var xPath = string.Join("/", path);
                 var name = element.Attribute("Name");
                 if (name != null)
                 {
