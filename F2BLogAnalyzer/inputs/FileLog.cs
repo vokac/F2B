@@ -506,6 +506,7 @@ namespace F2B.inputs
             // defaults can be set in place where we really use these varialbes
             evt.SetProcData("Event.EventId", "0");
             evt.SetProcData("Event.RecordId", "0");
+            evt.SetProcData("Event.Keywords", "");
             evt.SetProcData("Event.MachineName", "");
             evt.SetProcData("Event.TimeCreated", "0");
             evt.SetProcData("Event.ProviderName", "");

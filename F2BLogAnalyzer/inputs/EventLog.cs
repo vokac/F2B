@@ -284,6 +284,7 @@ namespace F2B.inputs
 
             int eventId;
             long recordId;
+            long keywords;
             string machineName;
             DateTime created;
             string providerName;
@@ -300,6 +301,7 @@ namespace F2B.inputs
                 {
                     eventId = evtlog.Id;
                     recordId = evtlog.RecordId.GetValueOrDefault(0);
+                    keywords = evtlog.Keywords.GetValueOrDefault(0);
                     machineName = evtlog.MachineName;
                     created = evtlog.TimeCreated.GetValueOrDefault(DateTime.Now);
                     providerName = evtlog.ProviderName;
@@ -368,6 +370,8 @@ namespace F2B.inputs
             // set basic event properties
             evt.SetProcData("Event.EventId", eventId.ToString());
             evt.SetProcData("Event.RecordId", recordId.ToString());
+            evt.SetProcData("Event.Keywords", keywords.ToString());
+            // machine name and time created already set in EventEntry constructor
             //evt.SetProcData("Event.MachineName", machineName);
             //evt.SetProcData("Event.TimeCreated", created.ToString());
             evt.SetProcData("Event.ProviderName", providerName);
