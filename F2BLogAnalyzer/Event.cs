@@ -463,6 +463,12 @@ namespace F2B
 
         private void Consume(object data)
         {
+            if (data == null)
+            {
+                Log.Error("Log event consumption: got null data?!");
+                return;
+            }
+
             EventQueueThread ethread = (EventQueueThread)data;
             Log.Info("Log event consumption (thread " + ethread.Number + "): start");
 
