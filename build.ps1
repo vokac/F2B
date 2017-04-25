@@ -81,6 +81,7 @@ If (Test-Path "${PKGPATH}") {
 }
 
 $cppdir = if ($platform -eq "x64") {"x64\${config}"} else {"${config}"}
+Write-Host "Using cppdir `"${cppdir}`""
 New-Item -Type directory "${PKGPATH}" | Out-Null
 Copy-Item -Verbose "README.md" "${PKGPATH}"
 Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer.*.exe" "${PKGPATH}"
@@ -101,7 +102,8 @@ foreach ($path in @("F2BLogAnalyzer\tests\LogEvent.exe")) {
 }
 # copy required visual studio redistributable files
 # (this only works with visual studio 2015)
-$libdir = if ($platform -eq "x64") {"${Env:windir}\SysWOW64"} else {"${Env:windir}\system32"}
+$libdir = if ($platform -eq "x64") {"${Env:windir}\system32"} else {"${Env:windir}\SysWOW64"}
+Write-Host "Using libdir `"${libdir}`""
 $redis = @('concrt140.dll', 'mfc140.dll', 'mfcm140.dll', 'msvcp140.dll', 'ucrtbased.dll', 'vcamp140.dll', 'vccorlib140.dll', 'vcomp140.dll', 'vcruntime140.dll')
 foreach ($file in $redis) {
    If ($config -eq "Debug") {
