@@ -13,6 +13,7 @@
     <Compile Include="$(MSBuildThisFileDirectory)Fw.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Limit.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)Log.cs" />
+    <Compile Include="$(MSBuildThisFileDirectory)Sid.cs" />
     <Compile Include="$(MSBuildThisFileDirectory)VCS.Designer.cs">
       <DependentUpon>VCS.resx</DependentUpon>
       <DesignTime>True</DesignTime>

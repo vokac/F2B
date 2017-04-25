@@ -32,7 +32,7 @@ powershell -File build.ps1 -config Debug x86
 * copy all files from build output directory `F2B.$(date).$(release).$(arch)` to `c:\F2B`
 * update windows configuration to accept firewall rules from F2B
 ```
-c:\F2B\F2BFirewall.exe add-wfp
+c:\F2B\F2BFwCmd.exe add-wfp
 ```
 * register F2B as windows service
 ```
@@ -71,7 +71,7 @@ Installation
 
 No installation program exists and all binaries (`F2BLogAnalyzer.all.exe`,
 `F2BLogAnalyzer.nomsmq.exe`, `F2BLogAnalyzer.standalone.exe`, `F2BQueue.exe`,
-`F2BFirewall.exe`, `F2BWFP.dll`) must be placed in one directory
+`F2BFirewall.exe`, `F2BFwCmd.exe`, `F2BWFP.dll`) must be placed in one directory
 (e.g. `c:\F2B`). F2B service code was written in C# which requires at least
 .Net framework version 4.5. This .Net version is not integral part of older
 windows (Vista, 7, 2008 Server) and must be installed on these systems.
@@ -94,18 +94,18 @@ specific WFP provider and sublayer. It is necessary to create these
 structures otherwise F2B will not be able to add new firewall filters.
 All necessary changes in WFP can be done using
 ```
-c:\F2B\F2BFirewall.exe add-wfp
+c:\F2B\F2BFwCmd.exe add-wfp
 ```
 If you want to run F2B service using non-privileged user account (instead of
 default LocalSystem), sufficient privileges to change firewall rules in WFP
 must be assigned to such account using:
 ```
-c:\F2B\F2BFirewall.exe add-privileges -u username
+c:\F2B\F2BFwCmd.exe add-privileges -u username
 ```
 To rollback changes in WFP (uninstall F2B) use
 ```
-c:\F2B\F2BFirewall.exe remove-privileges -u username
-c:\F2B\F2BFirewall.exe remove-wfp
+c:\F2B\F2BFwCmd.exe remove-privileges -u username
+c:\F2B\F2BFwCmd.exe remove-wfp
 ```
 
 ### Windows logging
@@ -1128,9 +1128,9 @@ from evaluated string expression
 
 ```xml
 <processor name="action_test_cmd" type="Fail2banCmd">
-  <description>Execute F2BFirewall.exe to add local WFP filter (this module can be used to run arbitrary executable / script)</description>
+  <description>Execute F2BFwCmd.exe to add local WFP filter (this module can be used to run arbitrary executable / script)</description>
   <options>
-    <option key="path" value="c:\F2B\F2BFirewall.exe"/> <!-- path to F2BFirewall.exe executable -->
+    <option key="path" value="c:\F2B\F2BFwCmd.exe"/> <!-- path to F2BFwCmd.exe executable -->
     <option key="args" value="add-filter /address ${${Fail2ban.Last}.Address}/${${Fail2ban.Last}.Prefix} /expiration ${${Fail2ban.Last}.Expiration}"/> <!-- executable arguments -->
     <option key="max_ignore" value="60"/> <!-- maximum time in seconds we ignore message with same parameters (minimum is real bantime/100) -->
     <option key="bantime" value="600"/> <!-- used only if Fail2ban module doesn't provide specific value -->
@@ -1230,7 +1230,7 @@ This configuration is used by `Account` processor.
 There are couple of options common to every F2B executable. To see all
 available command line options with their description use `-h` option.
 Useful informations are showed aslo once you call executable with `examples`
-option (e.g. `F2BFirewall.exe examples`). This shows most common patterns
+option (e.g. `F2BFwCmd.exe examples`). This shows most common patterns
 how to use command line interface including short description.
 
 Every executable also supports options related to logging. If you run
@@ -1285,22 +1285,234 @@ passed with `--dump-file filename` command line option). Special log event
 that can be created with `LogEvent.exe dump filename` also dumps internal
 F2BLogAnalyzer state in required filename.
 
+In addition to config file `F2BLogAnalyzer.exe` supports also command
+line actions that can be used to manage F2BLA service and even run this
+service interactively to be able to easily trace problems with modifications
+in configuration XML file. Supported actions:
+
+* help - show this help
+* examples - show command line examples
+* run - execute service interactively
+* install - install as windows service
+* uninstall - uninstall windows service
+* start - start installed service
+* stop - stop installed service
+
+Some actions use (optional/required) parameters:
+
+* `-h, --help` - show this help
+* `-l, --log-level` - log severity level (INFO, WARN, ERROR)
+* `-g, --log-file file` - log filename (disables event log or console logging)
+* `--log-size size` - maximum log file size
+* `--log-history cnt` - number of rotated log files
+* `-c, --config file` - use this configuration (default: F2BLogAnalyzer.exe.config)
+* `-u, --user user` - use given user to run this service
+* `-x, --max-mem size` - configure hard limit for memory in MB (Job Object)
+* `--dump-file file` - file used to store service internal state (default: c:\F2B\dump.txt)
+
+Examples how to use `F2BLogAnalyzer.exe`:
+
+* interactive run for debuging
+```
+F2BLogAnalyzer.exe run -c F2BLogAnalyzer.config
+```
+* manage F2BLogAnalyzer service using builtin funtionality
+```
+F2BLogAnalyzer.exe install -c c:\F2B\F2BLogAnalyzer.config [-u DOMAIN\username] [-l INFO] [-g c:\F2B\F2BLogAnalyzer.log]
+F2BLogAnalyzer.exe start
+F2BLogAnalyzer.exe stop
+F2BLogAnalyzer.exe uninstall
+```
+* manual F2BLogAnalyzer service management
+```
+sc create F2BLA binPath= "C:\F2B\F2BLogAnalyzer.exe" DisplayName= "Fail2ban Log Analyzer for Windows" type= own start= auto depend= eventlog/MSMQ
+sc description F2BLA "Provides one component of fail2ban services for Windows that can reconfigure firewall to reject clients that exceed failed login threshold."
+sc queryex F2BLA
+sc qc F2BLA
+sc start F2BLA
+sc stop F2BLA
+sc delete F2BLA
+```
+* user access to windows event log
+# Add user to "Event Log Readers" group or change directly log SDDL, e.g.
+wevtutil gl Application
+wevtutil sl Application /ca:...(A;;0x3;;;"SID")
+```
+
 #### F2BQueue (F2BQ service)
 
 This executable doesn't use configuration file and its behavior is driven
-only by command line arguments. TODO
+only by command line arguments. Supported `F2BQueue.exe` actions:
+
+* help - show this help
+* examples - show command line examples
+* run - execute service interactively
+* install - install as windows service
+* uninstall - uninstall windows service
+* start - start installed service
+* stop - stop installed service
+
+Some actions use (optional/required) parameters:
+
+* `-h, --help` - show this help
+* `-l, --log-level` - log severity level (INFO, WARN, ERROR)
+* `-g, --log-file file` - log filename (disables event log or console logging)
+* `--log-size size` - maximum log file size
+* `--log-history cnt` - number of rotated log files
+* `-c, --config file` - use this configuration (default: F2BQueue.exe.config)
+* `-s, --state file` - read/write queue state to file
+* `-u, --user user` - use given user to run this service
+* `-x, --mex-mem size` - configure hard limit for memory in MB (Job Object)
+* `-H, --host host` - hostname with running F2BQueue (or F2BLogAnalyzer) service
+* `-p queue` - producer queue provided by F2BQueue (or F2BLogAnalyzer) service
+* `-r queue` - subscription queue for F2BQueue service
+* `-i interv` - unsubscribe interval in seconds (default 150, disable 0)
+* `-n interv` - cleanup interval for expired filter rules in seconds (default 300, disable 0)
+* `-m, --max-size size` - maximum size of non-expired records in queue (default 0 - no limit)
+
+Examples how to use `F2BQueue.exe`:
+
+* interactive run for debuging
+```
+F2BQueue.exe run -H . -p F2BProducer -r F2BSubscription -s c:\F2B\queue.dat -i 300 -n 150
+```
+* manage F2BLogAnalyzer service using builtin funtionality
+```
+F2BQueue.exe install [-u DOMAIN\username] [-h HOST] [-p F2BFWProduction] [-r F2BFWRegistration] [-i 150] [-n 300] [-s c:\F2B\queue.dat] [-l INFO] [-g c:\F2B\F2BQueue.log]
+F2BQueue.exe start
+F2BQueue.exe stop
+F2BQueue.exe uninstall
+```
+* manual F2BQueue service management
+```
+sc create F2BQ binPath = "C:\F2B\F2BQueue.exe" DisplayName= "Fail2ban Queue for Windows" type= own start= auto depend= eventlog/MSMQ
+sc description F2BQ "Provides message queue component of fail2ban services for Windows that can reconfigure firewall to reject clients that exceed failed login threshold."
+sc queryex F2BQ
+sc qc F2BQ
+sc start F2BQ
+sc stop F2BQ
+sc delete F2BQ
+```
 
 #### F2BFirewall (F2BFW service)
 
 This executable doesn't use configuration file and its behavior is driven
-only by command line arguments. TODO
+only by command line arguments. Supported `F2BFirewall.exe` actions:
+
+* help - show this help
+* examples - show command line examples
+* run - execute service interactively
+* install - apply required WPF modifications and register F2BFW service
+  (use "user" to specify unprivileged account for F2BFW service)
+* uninstall - remove WPF modifications and unregister F2BFW service
+* start - start installed service
+* stop - stop installed service
+
+Some actions use (optional/required) parameters:
+
+* `-h` - show this help
+* `-l` - log severity level (INFO, WARN, ERROR)
+* `-g, --log-file file` log filename (disables event log or console logging)
+* `--log-size size` - maximum log file size
+* `--log-history cnt` - number of rotated log files
+* `-u user` - use given user to run this service
+* `-x size` - configure hard limit for memory in MB (Job Object)
+* `-H host` - hostname with running F2BQueue (or F2BLogAnalyzer) service
+* `-p queue` - producer queue provided by F2BQueue (or F2BLogAnalyzer) service
+* `-r queue` - subscription queue for F2BQueue service
+* `-i interv` - subscribe interval in seconds (default 60, disable 0)
+* `-n interv` - cleanup interval for expired filter rules in seconds (default 30, disable 0)
+* `-m size` - maximum number of filter rules in WFP (default 0 - no limit)
+
+Examples how to use `F2BFirewall.exe`:
+
+* interactive run for debuging
+```
+# service startup command for F2BQueue running on HOST
+F2BFirewall.exe run -H HOST -r F2BSubscription -i 240 -n 150
+# service startup command for direct communication with F2BLogAnalyzer
+F2BFirewall.exe run -H . -p F2BProducer
+```
+* manage F2BFirewall service using builtin funtionality
+```
+# register F2BFirewall service and allow "DOMAIN\username" to modify firewall filters
+F2BFirewall.exe install [-u DOMAIN\username] [-h HOST] [-p F2BProvider] [-r F2BFWRegistration] [-i 60] [-n 30] [-l INFO] [-g c:\F2B\F2BFirewall.log]
+# unregister F2BFirewall service and remove "DOMAIN\username" privileges for firewall filters
+F2BFirewall.exe uninstall [-u DOMAIN\username]
+```
+* manual F2BFirewall service management
+```
+# register WPF provider with GUID aebba4b7-7d2f-436f-b0ed-40069fb63cbc
+# register WPF subLayer with GUID 82ff6293-af12-4ef8-97dd-fd5477303838
+# add user ACL to WPF provider, subLayer and filter if you want run this service with unprivileged account
+# create F2BFW service
+sc create F2BFW binPath= "C:\F2B\F2BFirewall.exe" DisplayName= "Fail2ban Firewall Service" type= own start= auto depend= eventlog/BFE/MSMQ
+sc description F2BFW "Fail2ban firewall service reads message queue filled by Fail2ban and adds ban rules in Windows firewall."
+sc queryex F2BFW
+sc qc F2BFW
+sc start F2BFW
+sc stop F2BFW
+sc delete F2BFW
+```
+
+#### F2BFwCmd (F2B windows firewall interface)
+
+Commandline interface to manage windows firewall configuration related to
+the F2B application. It must be used to initialize WFP stuctures for F2B
+and provide functions to manage firewall rules created by F2B. Supported
+`F2BFwCmd.exe` actions:
+
+* help - show this help
+* examples - show command line examples
+* list-filters - list all F2BFW filters
+* add-filter - add F2BFW filte rule
+* remove-filter - remove F2BFW filter rule with filterId
+* remove-filters - remove all F2BFW filters
+* remove-expired-filters - remove expired F2BFW filters
+* remove-unknown-filters - remove F2BFW filters with invalid name
+* list-wfp - show F2B WFP structures
+* add-wfp - add F2B WFP structures
+* remove-wfp - remove F2B WFP structures
+* list-privileges - show WFP security descriptors
+* add-privileges - add user to WFP security descriptors
+* remove-privileges - remove user from WFP security descriptors
+
+Examples how to use `F2BFwCmd.exe`:
+* add privileges F2B firewall rules to "DOMAIN\username"
+```
+F2BFwCmd add-privileges [-u DOMAIN\username]
+```
+* remove privileges F2B firewall rules from "DOMAIN\username"
+```
+F2BFwCmd remove-privileges [-u DOMAIN\username]
+```
+* list all F2B filter rules
+```
+F2BFwCmd list-filters
+```
+* add F2B firewall filter for 192.0.2.123/24 with 5 minute expiration
+```
+F2BFwCmd add-filter --address 192.0.2.123/24 --expiration F2BFwCmd
+```
+* add pernament F2B firewall filter with hight priority which permits access from 192.0.2.234
+```
+F2BFwCmd add-filter --address 192.0.2.234 --weight 18446744073709551615 --permit --persistent
+```
+* remove filter with ID 12345678 (only F2B rules can be removed)
+```
+F2BFwCmd remove-filter --filter-id 12345678
+```
+* manage service manually:
+  * register WPF provider with GUID `aebba4b7-7d2f-436f-b0ed-40069fb63cbc`
+  * register WPF subLayer with GUID `82ff6293-af12-4ef8-97dd-fd5477303838`
+  * add user ACL to WPF provider, subLayer and filter if you want run this service with unprivileged account
 
 #### Simple examples how to use F2B executables
 
 * Standalone I (F2B for one machine)
 
 ```
-c:\F2B\F2BFirewall.exe add-wfp
+c:\F2B\F2BFwCmd.exe add-wfp
 c:\F2B\F2BLogAnalyzer.all.exe install \
         -c c:\F2B\F2BLogAnalyzer.exe.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
@@ -1311,7 +1523,7 @@ sc start F2BLA
   Queue installation)
 
 ```
-c:\F2B\F2BFirewall.exe add-wfp
+c:\F2B\F2BFwCmd.exe add-wfp
 c:\F2B\F2BLogAnalyzer.nomsmq.exe install \
         -c c:\F2B\F2BLogAnalyzer.exe.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
@@ -1349,7 +1561,7 @@ sc start F2BQ
 ```
  * machine protected by Fail2ban firewall
  ```
-c:\F2B\F2BFirewall.exe add-wfp
+c:\F2B\F2BFwCmd.exe add-wfp
 c:\F2B\F2BFirewall.exe install \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR \
         -H queuehost -r F2BSubscription -i 240 -n 150

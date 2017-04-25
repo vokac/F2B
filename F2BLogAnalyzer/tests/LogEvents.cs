@@ -28,19 +28,13 @@ namespace F2B.tests
         }
         static void Main(string[] args)
         {
-            string sSource;
-            string sLog;
-            string sEvent;
-
-            sSource = "F2B test log event";
-            sLog = "Application";
-            sEvent = "Sample Event";
-
-            foreach (string src in new string[]{ sSource, "F2BDump", "F2BBench" })
+            foreach (string src in new string[]{ "F2BTest", "F2BDump", "F2BBench" })
             {
                 if (!EventLog.SourceExists(src))
                 {
-                    EventLog.CreateEventSource(src, sLog);
+                    Console.WriteLine("Trying to create missing \"{0}\" log event source", src);
+                    Console.WriteLine("(admin privileges required for this operation)");
+                    EventLog.CreateEventSource(src, "Application");
                 }
             }
 
@@ -54,11 +48,15 @@ namespace F2B.tests
             if (args[0].ToLower() == "dump")
             {
                 string msg = args.Length > 1 ? args[1] : "c:\\F2B\\dump.log";
+                Console.WriteLine("Sending epecial event to trigger F2B debug info dump to {0}", msg);
                 EventInstance evt = new EventInstance(0, Process.GetCurrentProcess().Id, EventLogEntryType.Error);
                 EventLog.WriteEvent("F2BDump", evt, new object[] { msg });
             }
             else if (args[0].ToLower() == "types")
             {
+                string sSource = "F2BTest";
+                string sEvent = "Sample Event";
+
                 // classic (old) eventlog
                 EventLog.WriteEntry(sSource, sEvent);
                 EventLog.WriteEntry(sSource, sEvent, EventLogEntryType.Warning);
@@ -124,7 +122,7 @@ namespace F2B.tests
                     + "), PrivilegedProcessorTime(" + currentProcess.PrivilegedProcessorTime +")");
                 Console.WriteLine("START[{0}]: {1}", DateTime.Now.Ticks, DateTime.Now);
 
-                EventLog.WriteEntry("F2BBench", sEvent + " CNT " + cnt, EventLogEntryType.Information);
+                EventLog.WriteEntry("F2BBench", "Benchmark event #" + cnt, EventLogEntryType.Information);
                 EventInstance evt = new EventInstance(0, Process.GetCurrentProcess().Id, EventLogEntryType.Error);
                 for (int i = 0; i < cnt; i++)
                 {

@@ -91,6 +91,8 @@ Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer*.config*" "${PKG
 #Copy-Item -Verbose "F2BLogAnalyzer\App.config.minimal" "${PKGPATH}\F2BLogAnalyzer.exe.config.minimal"
 Copy-Item -Verbose "F2BFirewall\bin\${config}\F2BFirewall.exe" "${PKGPATH}"
 Copy-Item -Verbose "F2BFirewall\bin\${config}\F2BFirewall.exe.config" "${PKGPATH}"
+Copy-Item -Verbose "F2BFwCmd\bin\${config}\F2BFwCmd.exe" "${PKGPATH}"
+Copy-Item -Verbose "F2BFwCmd\bin\${config}\F2BFwCmd.exe.config" "${PKGPATH}"
 Copy-Item -Verbose "F2BQueue\bin\${config}\F2BQueue.exe" "${PKGPATH}"
 Copy-Item -Verbose "F2BQueue\bin\${config}\F2BQueue.exe.config" "${PKGPATH}"
 Copy-Item -Verbose "${cppdir}\F2BWFP.dll" "${PKGPATH}"
