@@ -255,7 +255,7 @@ namespace F2B
                 {
                     Log.Dest = Log.Destinations.Console;
                 }
-                Log.Info("F2BFirewall in interactive mode executing command: " + command);
+                Log.Info("F2BFwCmd in interactive mode executing command: " + command);
             }
 
             if (true)
@@ -565,7 +565,7 @@ namespace F2B
                 }
                 else
                 {
-                    Log.Error("Unknown F2BFirewall command: " + command);
+                    Log.Error("Unknown F2BFwCmd command: " + command);
                     return;
                 }
 
@@ -579,7 +579,7 @@ namespace F2B
                 }
             }
 
-            Log.Info("F2BFirewall main finished");
+            Log.Info("F2BFwCmd main finished");
         }
     }
 }

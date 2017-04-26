@@ -6,7 +6,7 @@ using System.Runtime.InteropServices;
 // set of attributes. Change these attribute values to modify the information
 // associated with an assembly.
 [assembly: AssemblyTitle("F2BFwCmd")]
-[assembly: AssemblyDescription("Fail2ban Firewall Service")]
+[assembly: AssemblyDescription("Fail2ban Firewall CLI")]
 [assembly: AssemblyConfiguration("")]
 [assembly: AssemblyCompany("JAS")]
 [assembly: AssemblyProduct("F2BFwCmd")]
