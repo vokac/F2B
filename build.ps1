@@ -106,7 +106,7 @@ foreach ($path in @("F2BLogAnalyzer\tests\LogEvent.exe")) {
 # (this only works with visual studio 2015)
 $libdir = if ($platform -eq "x64") {"${Env:windir}\system32"} else {"${Env:windir}\SysWOW64"}
 Write-Host "Using libdir `"${libdir}`""
-$redis = @('concrt140.dll', 'mfc140.dll', 'mfcm140.dll', 'msvcp140.dll', 'ucrtbased.dll', 'vcamp140.dll', 'vccorlib140.dll', 'vcomp140.dll', 'vcruntime140.dll')
+$redis = @('concrt140.dll', 'mfc140.dll', 'mfcm140.dll', 'msvcp140.dll', 'ucrtbased.dll', 'vcamp140.dll', 'vccorlib140.dll', 'vcomp140.dll', 'vcruntime140.dll', 'ucrtbase.dll')
 foreach ($file in $redis) {
    If ($config -eq "Debug") {
       $file = $file -replace '.dll', 'd.dll'
