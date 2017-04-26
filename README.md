@@ -1334,6 +1334,7 @@ sc stop F2BLA
 sc delete F2BLA
 ```
 * user access to windows event log
+```
 # Add user to "Event Log Readers" group or change directly log SDDL, e.g.
 wevtutil gl Application
 wevtutil sl Application /ca:...(A;;0x3;;;"SID")
