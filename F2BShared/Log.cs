@@ -2,6 +2,7 @@
 using System;
 using System.Diagnostics;
 using System.Runtime.CompilerServices;
+using System.Security;
 using System.IO;
 #endregion
 
@@ -71,20 +72,28 @@ namespace F2B
         {
             Dest = Log.Destinations.EventLog;
             Level = EventLogEntryType.Warning;
-            if (!EventLog.SourceExists("F2B"))
-            {
-                try
+            try {
+                if (!EventLog.SourceExists("F2B"))
                 {
-                    EventLog.CreateEventSource("F2B", "Application");
+                    try
+                    {
+                        EventLog.CreateEventSource("F2B", "Application");
+                    }
+                    catch (Exception ex)
+                    {
+                        EventLog.WriteEntry("Application",
+                            "Unable to create F2B EventLog source: "
+                            + ex.ToString(), EventLogEntryType.Error);
+                    }
                 }
-                catch (Exception ex)
-                {
-                    EventLog.WriteEntry("Application",
-                        "Unable to create F2B EventLog source: "
-                        + ex.ToString(), EventLogEntryType.Error);
-                }
+                elogExists = EventLog.SourceExists("F2B");
             }
-            elogExists = EventLog.SourceExists("F2B");
+            catch (SecurityException ex)
+            {
+                        EventLog.WriteEntry("Application",
+                            "Unable to check F2B EventLog source: "
+                            + ex.ToString(), EventLogEntryType.Error);
+            }
 
             AppDomain.CurrentDomain.ProcessExit += new EventHandler(ProcessExit);
         }
@@ -124,10 +133,13 @@ namespace F2B
             // log to the required destination
             if ((Dest & Log.Destinations.EventLog) != 0)
             {
+                string src = "Application";
                 if (elogExists)
                 {
-                    EventLog.WriteEntry("F2B", message, type);
+                    src = "F2B";
                 }
+
+                EventLog.WriteEntry("F2B", message, type);
             }
 
             if ((Dest & (Log.Destinations.Console | Log.Destinations.File)) != 0)
