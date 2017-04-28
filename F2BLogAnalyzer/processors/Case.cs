@@ -6,7 +6,7 @@ using System.Text;
 
 namespace F2B.processors
 {
-    public class CaseProcessor : BaseProcessor, IThreadSafeProcessor
+    public class CaseProcessor : BoolProcessor, IThreadSafeProcessor
     {
         #region Fields
         private Service service;
@@ -50,7 +50,7 @@ namespace F2B.processors
             else
             {
                 Log.Info("processor " + label + " not defined, using goto error");
-                return goto_error;
+                return goto_failure;
             }
         }
 
