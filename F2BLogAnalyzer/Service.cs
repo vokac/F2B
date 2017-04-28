@@ -300,6 +300,12 @@ namespace F2B
 #if DEBUG
         public void Dump(string filename)
         {
+            if (equeue == null)
+            {
+                Log.Error("Can't dump debug data because EventQueue object doesn't exist");
+                return;
+            }
+
             equeue.Produce(null, filename);
         }
 #endif
