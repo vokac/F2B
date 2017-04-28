@@ -133,13 +133,7 @@ namespace F2B
             // log to the required destination
             if ((Dest & Log.Destinations.EventLog) != 0)
             {
-                string src = "Application";
-                if (elogExists)
-                {
-                    src = "F2B";
-                }
-
-                EventLog.WriteEntry("F2B", message, type);
+                EventLog.WriteEntry(elogExists ? "F2B" : "Application", message, type);
             }
 
             if ((Dest & (Log.Destinations.Console | Log.Destinations.File)) != 0)
