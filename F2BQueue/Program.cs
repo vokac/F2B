@@ -57,14 +57,15 @@ namespace F2B
 
         public static void Examples()
         {
+            string pname = Process.GetCurrentProcess().ProcessName;
             Console.WriteLine("Examples:");
             Console.WriteLine("  rem Interactive run for debuging");
-            Console.WriteLine("  F2BQueue.exe run -H . -p F2BProducer -r F2BSubscription -s c:\\F2B\\queue.dat -i 300 -n 150");
+            Console.WriteLine("  {0} run -H . -p F2BProducer -r F2BSubscription -s c:\\F2B\\queue.dat -i 300 -n 150", pname);
             Console.WriteLine("  rem Manage F2BQueue service");
-            Console.WriteLine("  F2BQueue.exe install [-u DOMAIN\\username] [-h HOST] [-p F2BFWProduction] [-r F2BFWRegistration] [-i 150] [-n 300] [-s c:\\F2B\\queue.dat] [-l INFO] [-g c:\\F2B\\F2BQueue.log]");
-            Console.WriteLine("  F2BQueue.exe start");
-            Console.WriteLine("  F2BQueue.exe stop");
-            Console.WriteLine("  F2BQueue.exe uninstall");
+            Console.WriteLine("  {0} install [-u DOMAIN\\username] [-h HOST] [-p F2BFWProduction] [-r F2BFWRegistration] [-i 150] [-n 300] [-s c:\\F2B\\queue.dat] [-l INFO] [-g c:\\F2B\\F2BQueue.log]", pname);
+            Console.WriteLine("  {0} start", pname);
+            Console.WriteLine("  {0} stop", pname);
+            Console.WriteLine("  {0} uninstall", pname);
             Console.WriteLine("Manual F2BQueue service installation:");
             Console.WriteLine("  sc create " + Service.NAME + " binPath = \"C:\\path\\to\\executabla\\F2BQueue.exe\" DisplayName= \"" + Service.DISPLAY + "\" type= own start= auto depend= eventlog/MSMQ");
             Console.WriteLine("  sc description " + Service.NAME + " \"" + Service.DESCR + "\"");

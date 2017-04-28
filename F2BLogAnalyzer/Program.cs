@@ -53,14 +53,15 @@ namespace F2B
 
         public static void Examples()
         {
+            string pname = Process.GetCurrentProcess().ProcessName;
             Console.WriteLine("Examples:");
             Console.WriteLine("  # Interactive run for debuging");
-            Console.WriteLine("  F2BLogAnalyzer.exe run -c F2BLogAnalyzer.config");
+            Console.WriteLine("  {0} run -c F2BLogAnalyzer.config", pname);
             Console.WriteLine("  # Manage F2BLogAnalyzer service");
-            Console.WriteLine("  F2BLogAnalyzer.exe install -c c:\\F2B\\F2BLogAnalyzer.config [-u DOMAIN\\username] [-l INFO] [-g c:\\F2B\\F2BLogAnalyzer.log]");
-            Console.WriteLine("  F2BLogAnalyzer.exe start");
-            Console.WriteLine("  F2BLogAnalyzer.exe stop");
-            Console.WriteLine("  F2BLogAnalyzer.exe uninstall");
+            Console.WriteLine("  {0} install -c c:\\F2B\\F2BLogAnalyzer.config [-u DOMAIN\\username] [-l INFO] [-g c:\\F2B\\F2BLogAnalyzer.log]", pname);
+            Console.WriteLine("  {0} start", pname);
+            Console.WriteLine("  {0} stop", pname);
+            Console.WriteLine("  {0} uninstall", pname);
             Console.WriteLine("Manual F2BLogAnalyzer service installation:");
             Console.WriteLine("  # create " + Service.NAME + " service");
             Console.WriteLine("  sc create " + Service.NAME + " binPath= \"C:\\path\\to\\executable\\F2BLogAnalyzer.exe\" DisplayName= \"" + Service.DISPLAY + "\" type= own start= auto depend= eventlog/MSMQ");

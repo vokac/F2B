@@ -1493,7 +1493,7 @@ F2BFwCmd list-filters
 ```
 * add F2B firewall filter for 192.0.2.123/24 with 5 minute expiration
 ```
-F2BFwCmd add-filter --address 192.0.2.123/24 --expiration F2BFwCmd
+F2BFwCmd add-filter --address 192.0.2.123/24 --expiration "DateTime.UtcNow.Ticks + 5 * 60 * TimeSpan.TicksPerSecond"
 ```
 * add pernament F2B firewall filter with hight priority which permits access from 192.0.2.234
 ```

@@ -57,15 +57,16 @@ namespace F2B
 
         public static void Examples()
         {
+            string pname = Process.GetCurrentProcess().ProcessName;
             Console.WriteLine("Examples:");
             Console.WriteLine("  # service startup command for F2BQueue running on HOST");
-            Console.WriteLine("  F2BFirewall.exe run -H HOST -r F2BSubscription -i 240 -n 150");
+            Console.WriteLine("  {0} run -H HOST -r F2BSubscription -i 240 -n 150", pname);
             Console.WriteLine("  # service startup command for direct communication with F2BLogAnalyzer");
-            Console.WriteLine("  F2BFirewall.exe run -H . -p F2BProducer");
+            Console.WriteLine("  {0} run -H . -p F2BProducer", pname);
             Console.WriteLine("  # register F2BFirewall service and allow \"DOMAIN\\username\" to modify firewall filters");
-            Console.WriteLine("  F2BFirewall.exe install [-u DOMAIN\\username] [-h HOST] [-p F2BProvider] [-r F2BFWRegistration] [-i 60] [-n 30] [-l INFO] [-g c:\\F2B\\F2BFirewall.log]");
+            Console.WriteLine("  {0} install [-u DOMAIN\\username] [-h HOST] [-p F2BProvider] [-r F2BFWRegistration] [-i 60] [-n 30] [-l INFO] [-g c:\\F2B\\F2BFirewall.log]", pname);
             Console.WriteLine("  # unregister F2BFirewall service and remove \"DOMAIN\\username\" privileges for firewall filters");
-            Console.WriteLine("  F2BFirewall.exe uninstall [-u DOMAIN\\username]");
+            Console.WriteLine("  {0} uninstall [-u DOMAIN\\username]", pname);
             Console.WriteLine("Manage service manually:");
             Console.WriteLine("  # register WPF provider with GUID " + F2B.Firewall.PROVIDER_KEY);
             Console.WriteLine("  # register WPF subLayer with GUID " + F2B.Firewall.SUBLAYER_KEY);
