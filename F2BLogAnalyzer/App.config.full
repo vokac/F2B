@@ -464,8 +464,28 @@
         <options>
           <option key="template" value="label_for_${Event.Input}_${Event.Selector}"/>
         </options>
-        <goto failure="whitelist"/>
+        <goto failure="case_failure"/>
       </processor>
+      <processor name="case_failure" type="Label">
+        <description>Just dummy label, processor executed if case template doesn't match existing processor name</description>
+      </processor>
+      <processor name="regex" type="Regex">
+        <description>Use regex to choose next processor</description>
+        <options>
+          <option key="regex" value="(^svc-.+|.+\$)"/>
+          <option key="value" value="${EventData.TargetUserName}"/>
+        </options>
+        <goto success="regex_match" failure="regex_no_match"/>
+      </processor>
+      <processor name="regex_match" type="Label">
+        <description>Just dummy label, processor executed only if regex processor match value data</description>
+        <goto next="regex_end"/>
+      </processor>
+      <processor name="regex_no_match" type="Label">
+        <description>Just dummy label, processor executed only if regex processor doesn't match value data</description>
+        <goto next="regex_end"/>
+      </processor>
+      <processor name="regex_end" type="Label"/>
       <processor name="whitelist" type="Range">
         <description>Whitelist IP addresses</description>
         <!-- apply this processor only to log events from defined IP addresses -->

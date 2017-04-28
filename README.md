@@ -657,7 +657,7 @@ different with respect to normal failed login due to bad password.
 </processor>
 ```
 
-#### Case
+##### Case
 
 Use template to create next processor name. If the label after template
 variable expansion doesn't correspond to any existing processor name than
@@ -672,6 +672,28 @@ rules and no furter processor is called.
     <option key="template" value="label_for_${Event.Input}_${Event.Selector}"/>
   </options>
   <goto failure="last"/>
+</processor>
+```
+
+##### Regex
+
+For each event this processor expand expression specified in `value`
+configuration option and evaluate `regex` on final data. In case of
+match it calls `success` processor otherwise `failure` processor is
+called. This can be used e.g. to deal differently with special user
+accounts like machine accounts that ends with dolar sign (please note
+that following example use ${EventData.*} event variable that become
+available only after you already called `EventData` processor earlier
+in processing chain).
+
+```xml
+<processor name="regex" type="Regex">
+  <description>Use regex to choose next processor</description>
+  <options>
+    <option key="regex" value="(^svc-.+|.+\$)"/>
+    <option key="value" value="${EventData.TargetUserName}"/>
+  </options>
+  <goto success="processor_for_matched_regex" failure="processor_for_no_match_with_regex"/>
 </processor>
 ```
 

@@ -118,6 +118,7 @@
     <Compile Include="processors\PSFunct.cs" />
     <Compile Include="processors\Range.cs" />
     <Compile Include="processors\RangeFile.cs" />
+    <Compile Include="processors\Regex.cs" />
     <Compile Include="processors\Sleep.cs" />
     <Compile Include="processors\Stop.cs" />
     <Compile Include="Program.cs" />
