@@ -29,7 +29,7 @@ namespace F2B.processors
         public string goto_error { get; private set; }
         #endregion
 
-        private Service Service;
+        protected Service Service;
 
         #region Constructors
         public BaseProcessor(ProcessorElement config, Service service)

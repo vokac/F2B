@@ -9,7 +9,6 @@ namespace F2B.processors
     public class CaseProcessor : BoolProcessor, IThreadSafeProcessor
     {
         #region Fields
-        private Service service;
         private string template;
         #endregion
 
@@ -17,8 +16,6 @@ namespace F2B.processors
         public CaseProcessor(ProcessorElement config, Service service)
             : base(config, service)
         {
-            this.service = service;
-
             template = null;
             if (config.Options["template"] != null && !string.IsNullOrEmpty(config.Options["template"].Value))
             {
@@ -43,7 +40,7 @@ namespace F2B.processors
             ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
 
             string label = tpl.Apply(template);
-            if (service.HasProcessor(label))
+            if (Service.HasProcessor(label))
             {
                 return label;
             }
