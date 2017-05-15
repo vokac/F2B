@@ -111,7 +111,7 @@ namespace F2B
                 if (pos < expr.Length - 3) s4 = expr.Substring(pos, 4);
                 if (pos < expr.Length - 4) s5 = expr.Substring(pos, 5);
 
-                if (s1.Equals("(") || s4.Equals("int(") || s5.Equals("bool("))
+                if (s1.Equals("(") || s4.Equals("abs(") || s4.Equals("int(") || s5.Equals("bool("))
                 {
                     if (!allowed.HasFlag(EvaluateTokenType.Number))
                     {
@@ -119,6 +119,7 @@ namespace F2B
                     }
 
                     if (s1.Equals("(")) pos += 1;
+                    else if (s4.Equals("abs(")) pos += 4;
                     else if (s4.Equals("int(")) pos += 4;
                     else if (s5.Equals("bool(")) pos += 5;
 
@@ -150,8 +151,14 @@ namespace F2B
                     double val = Evaluate(expr.Substring(start, pos - start));
 
                     if (s1.Equals("(")) vals.Add(val);
+                    else if (s4.Equals("abs(")) vals.Add(Math.Abs(val));
                     else if (s4.Equals("int(")) vals.Add(((long)val));
                     else if (s5.Equals("bool(")) vals.Add(val == 0 ? 0 : 1);
+
+                    if (expr[pos] != ')')
+                    {
+                        throw new ArgumentException("Invalid token type \"" + expr + "\"[" + pos + "], expected ')'");
+                    }
 
                     pos += 1; // ")"
 
@@ -170,6 +177,20 @@ namespace F2B
                     pos += 2;
 
                     allowed = EvaluateTokenType.Number | EvaluateTokenType.Unary;
+                }
+                else if (allowed.HasFlag(EvaluateTokenType.Unary) && s1.Equals("+"))
+                {
+                    ops.Add("p");
+                    pos += 1;
+
+                    allowed = EvaluateTokenType.Number;
+                }
+                else if (allowed.HasFlag(EvaluateTokenType.Unary) && s1.Equals("-"))
+                {
+                    ops.Add("m");
+                    pos += 1;
+
+                    allowed = EvaluateTokenType.Number;
                 }
                 else if (s1.Equals("+") || s1.Equals("-") || s1.Equals("*") || s1.Equals("/")
                     || s1.Equals("%") || s1.Equals(">") || s1.Equals("<")
@@ -204,9 +225,28 @@ namespace F2B
                         throw new ArgumentException("Invalid token type \"" + expr + "\"[" + pos + "]");
                     }
 
+                    // parse number from string, supported formats:
                     int start = pos;
-                    while (pos < expr.Length && (char.IsDigit(expr, pos) || expr.Substring(pos, 1).Equals("."))) pos++;
-                    vals.Add(double.Parse(expr.Substring(start, pos - start)));
+                    // hexadecimal numbers (e.g. 0xFFFF)
+                    if (expr.Length >= 3 && expr.StartsWith("0x") && "0123456789abcdefABCDEF".IndexOf(expr[pos+2]) != -1)
+                    {
+                        pos += 2;
+                        while (pos < expr.Length && "0123456789abcdefABCDEF".IndexOf(expr[pos]) != -1) pos++;
+                        vals.Add(Convert.ToInt64(expr.Substring(start+2, pos - (start+2)), 16));
+                    }
+                    // binary numbers (e.g. 0b1111)
+                    else if (expr.Length >= 3 && expr.StartsWith("0b") && (expr[pos+2] == '0' || expr[pos+2] == '1'))
+                    {
+                        pos += 2;
+                        while (pos < expr.Length && (expr[pos] == '0' || expr[pos] == '1')) pos++;
+                        vals.Add(Convert.ToInt64(expr.Substring(start+2, pos - (start+2)), 2));
+                    }
+                    // decimal and floating point numbers (e.g. 123456, 1.2345)
+                    else
+                    {
+                        while (pos < expr.Length && (char.IsDigit(expr, pos) || expr.Substring(pos, 1).Equals("."))) pos++;
+                        vals.Add(double.Parse(expr.Substring(start, pos - start)));
+                    }
 
                     allowed = EvaluateTokenType.Binary | EvaluateTokenType.End;
                 }
@@ -221,8 +261,12 @@ namespace F2B
                 throw new ArgumentException("Invalid token type \"" + expr + "\": non-terminating token at the end");
             }
 
+            // debug
+            //Log.Info("Eval[" + expr + "].ops: " + string.Join(",", ops));
+            //Log.Info("Eval[" + expr + "].vals: " + string.Join(",", vals));
+
             string[] operation_precedence = new string[] {
-                "!", "*", "/", "%", "+", "-",
+                "!", "p", "m", "*", "/", "%", "+", "-",
                 "<", ">", "<=", ">=", "==", "!=",
                 "&", "^", "|", "&&", "||"
             };
@@ -240,6 +284,10 @@ namespace F2B
 
                     if (op.Equals("!"))
                         vals[vpos] = vals[vpos] == 0 ? 1 : 0;
+                    else if (op.Equals("p"))
+                        vals[vpos] = vals[vpos];
+                    else if (op.Equals("m"))
+                        vals[vpos] = -vals[vpos];
                     else if (op.Equals("*"))
                         vals[vpos] *= vals[vpos + 1];
                     else if (op.Equals("/"))
@@ -274,7 +322,7 @@ namespace F2B
                         vals[vpos] = vals[vpos] != 0 || vals[vpos + 1] != 0 ? 1 : 0;
 
                     // binary operators
-                    if (!op.Equals("!"))
+                    if (!(op.Equals("!") || op.Equals("p") || op.Equals("m")))
                         vals.RemoveAt(vpos + 1);
                 }
                 ops.RemoveAll(op => op.Equals(cop));
@@ -308,6 +356,7 @@ namespace F2B
             {Regex.Escape(@"\v"), "\v"},
             {Regex.Escape(@"\0"), "\0"},
             {Regex.Escape(@"\${"), "${"},
+            {Regex.Escape(@"\$("), "$("},
         };
         private static Regex escapeRegex = new Regex(string.Join("|", escapeMapping.Keys));
 
@@ -387,12 +436,54 @@ namespace F2B
                         key = key.Substring(0, seppos);
                     }
 
+                    // final string start position and length
+                    int vpos = 0;
+                    int vlen = -1;
+                    if (key.Contains(":"))
+                    {
+                        int seppos = key.IndexOf(":");
+                        string keysfx = key.Substring(seppos + 1);
+                        key = key.Substring(0, seppos);
+                        if (keysfx.Contains(":"))
+                        {
+                            seppos = keysfx.IndexOf(":");
+                            vpos = int.Parse(keysfx.Substring(0, seppos));
+                            vlen = int.Parse(keysfx.Substring(seppos + 1));
+                        }
+                        else
+                        {
+                            vpos = int.Parse(keysfx);
+                        }
+                    }
+
                     // replace variable
                     if (repl.ContainsKey(key))
                     {
                         object value = repl[key];
-                        if (value != null) output.Append(value.ToString());
-                        else output.Append("");
+                        if (value != null)
+                        {
+                            string val = value.ToString();
+                            if (vpos == 0 && vlen == -1)
+                            {
+                                output.Append(val);
+                            }
+                            else
+                            {
+                                if (vpos < val.Length)
+                                {
+                                    vlen = (vlen == -1 ? val.Length-vpos : Math.Min(val.Length-vpos, vlen));
+                                    output.Append(val.Substring(vpos, vlen));
+                                }
+                                else
+                                {
+                                    output.Append("");
+                                }
+                            }
+                        }
+                        else
+                        {
+                            output.Append("");
+                        }
                     }
                     else if (defval != null)
                     {
