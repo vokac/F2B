@@ -732,38 +732,72 @@ treshold. It is also possible to keep history of several rotated log files.
 
 #### LoggerSQL
 
-Log selected events in a SQL database using ODBC connection string and column
-to F2B processor variable name map (you have to put EventData processor before
-if you want to use ${EventData.*} variables). Some databases doesn't support
-"clever" data conversion and may be it'll be necessary to use string data type
-for most of SQL table columns.
+Log important data from selected events in a SQL database using ODBC (MySQL,
+PostgreSQL and MSSQL database was tested with this module). Before you can
+start to use LoggerSQL module first you have to create database table that
+will keep all required data. In F2B configuration file it is necessary
+to specify ODBC connection string, database table name or you own customized
+"insert" command and mapping between `F2BLogAnalyzer` event parameters
+and database table columns.
+
+It is useful to call `EventData` processor before logger module, because
+this module populate event parmeters with all data from logged event
+(${EventData.*} variables). Databases handle incorrect input data types
+differently (e.g. MySQL is very "clever" when it comes to conversion from
+input string to various data types) and most of them can't automatically
+deal with complex data conversion. Databases are usually able to convert
+string representation of number, but final value should not exceed range
+for column numeric data type. Also be avare that string data should not
+exceed lenght of `CHAR` or `VARCHAR` - it is possible to truncate string
+directly using F2B expression syntax `${variable:start_pos:length}`.
+
+You can customize how to store data in database using `insert` configuration
+option. This example also shows in a comment user defined "INSERT" command
+that is ekvivalent to the behavior when you just specify simple `table`
+configuration option. Customized `insert` SQL command provides maximum
+flexibility, because it can be used e.g. to call stored procedure to save
+data. Parameters are defined as `column.name` expressions and they are passed
+to the SQL engine ordered by `columns` configuration option.
+
+Executing `LoggerSQL` processor by default waits till database server
+accepts new data. This is not optimal in case database is down, because
+log event processing can hang till `timeout`. It is more robust to save
+data asynchronously with `async` configuration option set to `true`.
+With `async` enabled `LoggerSQL` first put data in a queue and separate
+thread (re)tries to store these data in database. There is an upper limit
+`async_max_queued` for unsaved data in the queue to prevent excessive
+memory usage in case there is long-lasting issue with database.
 
 ```sql
-CREATE TABLE `f2b` (
-    `inserted` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    `timestamp` BIGINT DEFAULT NULL,
-    `hostname` VARCHAR(50) DEFAULT NULL,
-    `id` INTEGER DEFAULT NULL,
-    `input` VARCHAR(50) DEFAULT NULL,
-    `selector` VARCHAR(50) DEFAULT NULL,
-    `login` VARCHAR(10) DEFAULT NULL,
-    `status` INTEGER DEFAULT NULL,
-    `substatus` INTEGER DEFAULT NULL,
-    `event` INTEGER DEFAULT NULL,
-    `record` INTEGER DEFAULT NULL,
-    `machine` VARCHAR(50) DEFAULT NULL,
-    `created` BIGINT DEFAULT NULL,
-    `provider` VARCHAR(40) DEFAULT NULL,
-    `address` VARCHAR(40) DEFAULT NULL,
-    `port` SMALLINT DEFAULT NULL,
-    `username` VARCHAR(25) DEFAULT NULL,
-    `domain` VARCHAR(20) DEFAULT NULL
+CREATE TABLE f2b (
+    inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    timestamp BIGINT DEFAULT NULL,
+    hostname VARCHAR(50) DEFAULT NULL,
+    id INTEGER DEFAULT NULL,
+    input VARCHAR(50) DEFAULT NULL,
+    selector VARCHAR(50) DEFAULT NULL,
+    login VARCHAR(10) DEFAULT NULL,
+    --status INTEGER UNSIGNED DEFAULT NULL,
+    status BIGINT DEFAULT NULL,
+    --substatus INTEGER UNSIGNED DEFAULT NULL,
+    substatus BIGINT DEFAULT NULL,
+    event INTEGER DEFAULT NULL,
+    record INTEGER DEFAULT NULL,
+    --keywords INTEGER DEFAULT NULL,
+    keywords BIGINT DEFAULT NULL,
+    machine VARCHAR(50) DEFAULT NULL,
+    created VARCHAR(22) DEFAULT NULL,
+    provider VARCHAR(40) DEFAULT NULL,
+    address VARCHAR(40) DEFAULT NULL,
+    port VARCHAR(5) DEFAULT NULL,
+    username VARCHAR(25) DEFAULT NULL,
+    domain VARCHAR(20) DEFAULT NULL
 );
 ```
 
 ```xml
 <processor name="logger_sql" type="LoggerSQL">
-  <description>Log all selected events in MySQL database using ODBC</description>
+  <description>Log all selected events in database using ODBC</description>
   <options>
     <!--
     # MySQL ODBC OPTION AUTO_RECONNECT(4194304)
@@ -771,29 +805,35 @@ CREATE TABLE `f2b` (
     <option key="odbc" value="DRIVER={MySQL ODBC 3.51 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
     <option key="odbc" value="DRIVER={MySQL ODBC 5.1 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
     <option key="odbc" value="DRIVER={MySQL ODBC 5.3 Unicode Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
+    # PostgreSQL ODBC connection
+    <option key="odbc" value="DRIVER={PostgreSQL ANSI};SERVER=postgresql.example.com;PORT=5432;DATABASE=f2b;USERNAME=username;PASSWORD=secret"/>
     # MSSQL ODBC connection with autoreconnect enabled
     <option key="odbc" value="DRIVER={ODBC Driver 11 for SQL Server};SERVER=server_that_supports_connection_resiliency;UID=username;PWD=secret;ConnectRetryCount=2;ConnectRetryInterval=1"/>
     -->
     <option key="odbc" value="DRIVER={MySQL ODBC 3.51 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
     <option key="table" value="f2b"/>
-    <option key="columns" value="id,timestamp,hostname,input,selector,status,event,record,machine,created,provider,address,port,username,domain"/>
+    <!--
+    <option key="insert" value="INSERT INTO f2b (timestamp,hostname,id,input,selector,login,status,substatus,event,record,keywords,machine,created,provider,address,port,username,domain) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"/>
+    -->
+    <option key="columns" value="timestamp,hostname,id,input,selector,login,status,substatus,event,record,keywords,machine,created,provider,address,port,username,domain"/>
     <option key="column.timestamp" value="${Event.Timestamp}"/>
-    <option key="column.hostname" value="${Event.MachineName}"/>
+    <option key="column.hostname" value="${EventSystem.Computer:0:50}"/>
     <option key="column.id" value="${Event.Id}"/>
-    <option key="column.input" value="${Event.Input}"/>
-    <option key="column.selector" value="${Event.Selector}"/>
-    <option key="column.login" value="${Event.Login}"/>
-    <option key="column.status" value="${EventData.Status:=-1}"/>
-    <option key="column.substatus" value="${EventData.SubStatus:=-1}"/>
+    <option key="column.input" value="${Event.Input:0:50}"/>
+    <option key="column.selector" value="${Event.Selector:0:50}"/>
+    <option key="column.login" value="${Event.Login:0:10:=}"/>
+    <option key="column.status" value="$(${EventData.Status:=-1})"/>
+    <option key="column.substatus" value="$(${EventData.SubStatus:=-1})"/>
     <option key="column.event" value="${Event.EventId}"/>
     <option key="column.record" value="${Event.RecordId}"/>
-    <option key="column.machine" value="${Environment.MachineName}"/>
-    <option key="column.created" value="${Event.TimeCreated}"/>
-    <option key="column.provider" value="${Event.ProviderName}"/>
-    <option key="column.address" value="${Event.Address}"/>
-    <option key="column.port" value="${Event.Port}"/>
-    <option key="column.username" value="${Event.Username}"/>
-    <option key="column.domain" value="${Event.Domain}"/>
+    <option key="column.keywords" value="${Event.Keywords}"/>
+    <option key="column.machine" value="${Event.MachineName:0:50}"/>
+    <option key="column.created" value="${Event.TimeCreated:0:22}"/>
+    <option key="column.provider" value="${Event.ProviderName:0:40}"/>
+    <option key="column.address" value="${Event.Address:=}"/>
+    <option key="column.port" value="${Event.Port:=0}"/>
+    <option key="column.username" value="${Event.Username:0:25}"/>
+    <option key="column.domain" value="${Event.Domain:0:20}"/>
     <option key="timeout" value="15"/>
     <option key="async" value="true"/>
     <option key="async_max_queued" value="1000"/>

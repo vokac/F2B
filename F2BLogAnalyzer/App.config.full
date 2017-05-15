@@ -387,28 +387,33 @@
         </options>
       </processor>
       <processor name="logger_sql" type="LoggerSQL">
-        <description>Log all selected events in MySQL database using ODBC</description>
+        <description>Log all selected events in database using ODBC</description>
         <options>
           <!--
-            CREATE TABLE `f2b` (
-            `inserted` TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-            `timestamp` BIGINT DEFAULT NULL,
-            `hostname` VARCHAR(50) DEFAULT NULL,
-            `id` INTEGER DEFAULT NULL,
-            `input` VARCHAR(50) DEFAULT NULL,
-            `selector` VARCHAR(50) DEFAULT NULL,
-            `login` VARCHAR(5) DEFAULT NULL,
-            `status` INTEGER DEFAULT NULL,
-            `substatus` INTEGER DEFAULT NULL,
-            `record` INTEGER DEFAULT NULL,
-            `machine` VARCHAR(50) DEFAULT NULL,
-            `created` BIGINT DEFAULT NULL,
-            `provider` VARCHAR(40) DEFAULT NULL,
-            `address` VARCHAR(40) DEFAULT NULL,
-            `port` SMALLINT DEFAULT NULL,
-            `username` VARCHAR(25) DEFAULT NULL,
-            `domain` VARCHAR(20) DEFAULT NULL
-            );
+          CREATE TABLE f2b (
+            inserted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+            timestamp BIGINT DEFAULT NULL,
+            hostname VARCHAR(50) DEFAULT NULL,
+            id INTEGER DEFAULT NULL,
+            input VARCHAR(50) DEFAULT NULL,
+            selector VARCHAR(50) DEFAULT NULL,
+            login VARCHAR(10) DEFAULT NULL,
+            --status INTEGER UNSIGNED DEFAULT NULL,
+            status BIGINT DEFAULT NULL,
+            --substatus INTEGER UNSIGNED DEFAULT NULL,
+            substatus BIGINT DEFAULT NULL,
+            event INTEGER DEFAULT NULL,
+            record INTEGER DEFAULT NULL,
+            --keywords INTEGER DEFAULT NULL,
+            keywords BIGINT DEFAULT NULL,
+            machine VARCHAR(50) DEFAULT NULL,
+            created VARCHAR(22) DEFAULT NULL,
+            provider VARCHAR(40) DEFAULT NULL,
+            address VARCHAR(40) DEFAULT NULL,
+            port VARCHAR(5) DEFAULT NULL,
+            username VARCHAR(25) DEFAULT NULL,
+            domain VARCHAR(20) DEFAULT NULL
+          );
           -->
           <!--
           # MySQL ODBC OPTION AUTO_RECONNECT(4194304)
@@ -416,29 +421,36 @@
           <option key="odbc" value="DRIVER={MySQL ODBC 3.51 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
           <option key="odbc" value="DRIVER={MySQL ODBC 5.1 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
           <option key="odbc" value="DRIVER={MySQL ODBC 5.3 Unicode Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
+          # PostgreSQL ODBC connection
+          <option key="odbc" value="DRIVER={PostgreSQL ANSI};SERVER=postgresql.example.com;PORT=5432;DATABASE=f2b;USERNAME=username;PASSWORD=secret"/>
           # MSSQL ODBC connection with autoreconnect enabled
           <option key="odbc" value="DRIVER={ODBC Driver 11 for SQL Server};SERVER=server_that_supports_connection_resiliency;UID=username;PWD=secret;ConnectRetryCount=2;ConnectRetryInterval=1"/>
           -->
           <option key="odbc" value="DRIVER={MySQL ODBC 3.51 Driver};SERVER=mysql.example.com;PORT=3306;DATABASE=f2b;USER=username;PASSWORD=secret;OPTION=4194304"/>
           <option key="table" value="f2b"/>
-          <option key="columns" value="id,timestamp,hostname,input,selector,status,event,record,machine,created,provider,address,port,username,domain"/>
+          <!--
+          <option key="insert" value="INSERT INTO f2b (timestamp,hostname,id,input,selector,login,status,substatus,event,record,keywords,machine,created,provider,address,port,username,domain) VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)"/>
+          <option key="columns" value="timestamp,hostname,id,input,selector,login,status,substatus,event,record,keywords,machine,created,provider,address,port,username,domain"/>
+          -->
+          <option key="columns" value="timestamp,hostname,id,input,selector,login,status,substatus,event,record,keywords,machine,created,provider,address,port,username,domain"/>
           <option key="column.timestamp" value="${Event.Timestamp}"/>
-          <option key="column.hostname" value="${Event.Hostname}"/>
+          <option key="column.hostname" value="${EventSystem.Computer:0:50}"/>
           <option key="column.id" value="${Event.Id}"/>
-          <option key="column.input" value="${Event.Input}"/>
-          <option key="column.selector" value="${Event.Selector}"/>
-          <option key="column.login" value="${Event.Login}"/>
-          <option key="column.status" value="${EventData.Status:=-1}"/>
-          <option key="column.substatus" value="${EventData.SubStatus:=-1}"/>
+          <option key="column.input" value="${Event.Input:0:50}"/>
+          <option key="column.selector" value="${Event.Selector:0:50}"/>
+          <option key="column.login" value="${Event.Login:0:10:=}"/>
+          <option key="column.status" value="$(${EventData.Status:=-1})"/>
+          <option key="column.substatus" value="$(${EventData.SubStatus:=-1})"/>
           <option key="column.event" value="${Event.EventId}"/>
           <option key="column.record" value="${Event.RecordId}"/>
-          <option key="column.machine" value="${Event.MachineName}"/>
-          <option key="column.created" value="${Event.TimeCreated}"/>
-          <option key="column.provider" value="${Event.ProviderName}"/>
-          <option key="column.address" value="${Event.Address}"/>
-          <option key="column.port" value="${Event.Port}"/>
-          <option key="column.username" value="${Event.Username}"/>
-          <option key="column.domain" value="${Event.Domain}"/>
+          <option key="column.keywords" value="${Event.Keywords}"/>
+          <option key="column.machine" value="${Event.MachineName:0:50}"/>
+          <option key="column.created" value="${Event.TimeCreated:0:22}"/>
+          <option key="column.provider" value="${Event.ProviderName:0:40}"/>
+          <option key="column.address" value="${Event.Address:=}"/>
+          <option key="column.port" value="${Event.Port:=0}"/>
+          <option key="column.username" value="${Event.Username:0:25}"/>
+          <option key="column.domain" value="${Event.Domain:0:20}"/>
           <option key="timeout" value="15"/>
           <option key="async" value="true"/>
           <option key="async_max_queued" value="1000"/>
@@ -679,25 +691,49 @@ Login:
   ${Login.Last}.Success = ${${Login.Last}.Success:=none}
   ${Login.Last}.Failure = ${${Login.Last}.Failure:=none}
 
+  Available variables:
+Environment:
+  now: ${Environment.Now}
+  date: ${Environment.DateTime}
+  machine: ${Environment.MachineName}
+
 Event:
   id: ${Event.Id}
   timestamp: ${Event.Timestamp}
   created: ${Event.TimeCreated}
-  hostname: ${Event.Hostname}
+  machine: ${Event.MachineName}
   type: ${Event.Type}
   input: ${Event.Input}
   selector: ${Event.Selector}
+  processor: ${Event.Processor}
+  event: ${Event.EventId}
+  recordid: ${Event.RecordId}
+  keywords: ${Event.Keywords}
+  provider: ${Event.ProviderName}
+  pid: ${Event.ProcessId}
+  logname: ${Event.LogName}
+  loglevel: ${Event.LogLevel}
   address: ${Event.Address}
   port: ${Event.Port}
   username: ${Event.Username}
   domain: ${Event.Domain}
   login: ${Event.Login}
-  event: ${Event.EventId}
-  machine: ${Event.MachineName}
-  recordid: ${Event.RecordId}
-  machine: ${Event.MachineName}
-  provider: ${Event.ProviderName}
-  process: ${Event.ProcessId}
+
+EventSystem:
+  provider_name: ${EventSystem.Provider.Name}
+  provider_guid: ${EventSystem.Provider.Guid}
+  event: ${EventSystem.EventID}
+  version: ${EventSystem.Version}
+  level: ${EventSystem.Level}
+  task: ${EventSystem.Task}
+  opcode: ${EventSystem.Opcode}
+  keywords: ${EventSystem.Keywords}
+  systime: ${EventSystem.TimeCreated.SystemTime}
+  record: ${EventSystem.EventRecordID}
+  pid: ${EventSystem.Execution.ProcessID}
+  thread: ${EventSystem.Execution.ThreadID}
+  channel: ${EventSystem.Channel}
+  computer: ${EventSystem.Computer}
 
 EventData:
   SubjectUserSid: ${EventData.SubjectUserSid}
@@ -724,6 +760,12 @@ EventData:
 
 
 Expressions:
+  strings:
+    \${Event.MachineName} = ${Event.MachineName}
+    \${Event.Undefined:=default value} = ${Event.Undefined:=default value}
+    \${Event.MachineName:=default value} = ${Event.MachineName:=default value}
+    \${Event.MachineName:2} = ${Event.MachineName:2}
+    \${Event.MachineName:2:5} = ${Event.MachineName:2:5}
   simple aritmetic:
     1 + 2 * 3 - 4 = $(1 + 2 * 3 - 4)
     (1 + 2) * 3 - 4 = $((1 + 2) * 3 - 4)
@@ -746,6 +788,10 @@ Expressions:
   typecasting from double to integer
     1.6 = $(1.6)           int(1.6)*2 = $(int(1.6)*2)          bool(0)=$(bool(0))
     1.6*2 = $(1.6*2)         int(1.6*2) = $(int(1.6*2))          bool(123)=$(bool(123))
+    -(-(1)) = $(-(-(1)))
+    abs(-1) = $(abs(-1))
+    0xffff = $(0xffff)
+    0b1111 = $(0b1111)
     7.9 / 4 = $(7.9 / 4)
     int(7.9 / 4) = $(int(7.9 / 4))
     7.9 % 4 = $(7.9 % 4)

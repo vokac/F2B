@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.Concurrent;
 using System.Data;
 using System.Data.Odbc;
+using System.Diagnostics;
 using System.IO;
 using System.Linq;
 using System.Threading;
@@ -16,9 +17,9 @@ namespace F2B.processors
     {
         #region Fields
         private string odbc;
-        private string table;
+        private string table = null;
         private IList<Tuple<string, string>> columns;
-        private string insert;
+        private string insert = null;
         private int timeout = 15;
         private OdbcConnection conn = null;
         private bool stop;
@@ -43,7 +44,11 @@ namespace F2B.processors
                 throw new InvalidDataException("required configuration option odbc missing or empty");
             }
 
-            if (config.Options["table"] != null && !string.IsNullOrWhiteSpace(config.Options["table"].Value))
+            if (config.Options["insert"] != null && !string.IsNullOrWhiteSpace(config.Options["insert"].Value))
+            {
+                insert = config.Options["insert"].Value;
+            }
+            else if (config.Options["table"] != null && !string.IsNullOrWhiteSpace(config.Options["table"].Value))
             {
                 table = config.Options["table"].Value;
             }
@@ -71,9 +76,12 @@ namespace F2B.processors
                     columns.Add(new Tuple<string, string>(column, template));
                 }
 
-                char[] vars = Enumerable.Repeat('?', columns.Count).ToArray();
-                insert = "INSERT INTO " + table + " (" + config.Options["columns"].Value
-                    + ") VALUES (" + string.Join(",", vars) + ")";
+                if (insert == null)
+                {
+                    char[] vars = Enumerable.Repeat('?', columns.Count).ToArray();
+                    insert = "INSERT INTO " + table + " (" + config.Options["columns"].Value
+                        + ") VALUES (" + string.Join(",", vars) + ")";
+                }
             }
             else
             {
@@ -113,9 +121,26 @@ namespace F2B.processors
                     Log.Info("Canceled async take (queue size: " + asyncQueue.Count + "): " + ex.Message);
                     break;
                 }
+                catch (OdbcException ex)
+                {
+                    Log.Error("ODBC Exception in async thread: " + ex.Message);
+
+                    if (Log.Level == EventLogEntryType.Information)
+                    {
+                        for (int i=0; i < ex.Errors.Count; i++)
+                        {
+                            OdbcError err = ex.Errors[i];
+                            Log.Info("ODBC Exception details #" + i
+                                + ": message='" + err.Message
+                                + "', native='" + err.NativeError.ToString()
+                                + "', source='" + err.Source
+                                + "', SQL='" + err.SQLState);
+                        }
+                    }
+                }
                 catch (Exception ex)
                 {
-                    Log.Error("Execption in async thread: " + ex.Message);
+                    Log.Error("Exception(" + ex.GetType().Name + ") in async thread: " + ex.Message);
                 }
             }
         }
@@ -292,6 +317,7 @@ namespace F2B.processors
 
             output.WriteLine("config connection: " + odbc);
             output.WriteLine("config table: " + table);
+            output.WriteLine("config insert: " + insert);
             foreach (var item in columns)
             {
                 output.WriteLine("config column " + item.Item1 + ": " + item.Item2);
