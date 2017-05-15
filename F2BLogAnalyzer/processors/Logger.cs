@@ -80,6 +80,9 @@ namespace F2B.processors
 
         public override string Execute(EventEntry evtlog)
         {
+            ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
+            string data = tpl.Apply(template);
+
             try
             {
                 if (size > 0)
@@ -141,8 +144,6 @@ namespace F2B.processors
                     nexceptions = 0;
                 }
 
-                ProcessorEventStringTemplate tpl = new ProcessorEventStringTemplate(evtlog);
-                string data = tpl.Apply(template);
                 sw.Write(data);
                 
                 if (synchronized)
