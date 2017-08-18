@@ -41,6 +41,10 @@ c:\F2B\F2BLogAnalyzer.nomsmq.exe install \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
 ```
 * modify configuration file `F2BLogAnalyzer.exe.config` according your requirements
+* remove MSMQ from service dependencies (currently hardcoded in sources)
+```
+sc config F2BLA depend= eventlog/BFE
+```
 * start F2B service
 ```
 sc start F2BLA
@@ -1590,6 +1594,7 @@ c:\F2B\F2BFwCmd.exe add-wfp
 c:\F2B\F2BLogAnalyzer.nomsmq.exe install \
         -c c:\F2B\F2BLogAnalyzer.exe.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
+sc config F2BLA depend= eventlog/BFE
 sc start F2BLA
 ```
 
@@ -1602,6 +1607,7 @@ sc start F2BLA
 c:\F2B\F2BLogAnalyzer.standalone.exe install \
         -c c:\F2B\F2BLogAnalyzer.exe.config \
         -g c:\F2B\F2BLogAnalyzer.log -l ERROR
+sc config F2BLA depend= eventlog/BFE
 sc start F2BLA
 ```
 
