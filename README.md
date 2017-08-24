@@ -14,7 +14,7 @@ Requirements
 * .Net framework 4.5 (Windows Vista, 7, 2008 Server)
 * Visual C++ Redistributable for Visual Studio 2015 ("optional")
 * Microsoft Message Queue (optional, for distributed Fali2ban)
-* Visual Studio Community 2015 (optional, for building sources)
+* Visual Studio Community 2015 / 2017 (optional, for building sources)
 
 
 Quick Start
@@ -25,7 +25,8 @@ Quick Start
 git clone https://github.com/vokac/F2B.git
 cd F2B
 ```
-* build within MSBuild Command Prompt
+* build within MSBuild Command Prompt (some required VS2015 / VS2017 modules
+  are not installed during default installation and must be explicitely selected)
 ```
 powershell -File build.ps1 -config Debug x86
 ```
@@ -58,14 +59,19 @@ Building from sources
 ```
   git clone https://github.com/vokac/F2B.git
 ```
-* build with Visual Studio 2015 GUI
-  * load F2B.sln project file with Visual Studio 2015
+* install Visual Studio Community Edition version 2015 or 2017
+  * it is necessery to install components for C# and C++ development
+  * some modules must be explicitely selected
+    * Desktop development with C++ -> MFC and ATL support (x86 and x64)
+    * Desktop development with C++ -> Windows 8.1 SDK and UCRT SDK
+* build with Visual Studio 2015 / 2017 GUI
+  * load F2B.sln project file with Visual Studio 2015 / 2017
   * Build -> Batch Build... -> Build
   * create "Release" build with F2BWFP compiled as 32bit dll
   * for 64bit binaries disable "preferred 32bit" compilation
     of the C# code and compile dll library as "Release|x64"
-* build with Visual Studio 2015 command line
-  * start MSBuild Command Prompt for VS2015
+* build with Visual Studio 2015 / 2017 command line
+  * start MSBuild Command Prompt for VS2015 / Developer Command Prompt for VS 2017
   * execute `powershell -File build.ps1 [-config Release|Debug] [-platform x86|x64]`
 
 Installation
