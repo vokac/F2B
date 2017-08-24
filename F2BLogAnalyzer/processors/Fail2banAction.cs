@@ -87,6 +87,7 @@ namespace F2B.processors
             }
 
             long expiration = DateTime.UtcNow.Ticks + btime * TimeSpan.TicksPerSecond;
+            Log.Info("Ban IP address " + addr + "/" + prefix + " with expiration time " + expiration);
             ExecuteFail2banAction(evtlog, addr, prefix, expiration);
 
             // add this message to in memory cache of recently send F2B messages

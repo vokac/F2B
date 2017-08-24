@@ -481,7 +481,7 @@ namespace F2B
                         if ((F2B_FWDATA_TYPE0_ENUM)data[pos] == F2B_FWDATA_TYPE0_ENUM.F2B_FWDATA_IPv6)
                             ret.Append("address=" + new IPAddress(baddr6));
                         else
-                            ret.Append("address=" + new IPAddress(baddr6) + "/" + data[pos + 1 + 4]);
+                            ret.Append("address=" + new IPAddress(baddr6) + "/" + data[pos + 1 + 16]);
                         break;
                     case F2B_FWDATA_TYPE0_ENUM.F2B_FWDATA_IPv6_RANGE:
                         byte[] baddrLow6 = new byte[16];
@@ -580,7 +580,7 @@ namespace F2B
                         if ((F2B_FWDATA_TYPE0_ENUM)data[pos] == F2B_FWDATA_TYPE0_ENUM.F2B_FWDATA_IPv6)
                             output.WriteLine("    address: " + new IPAddress(baddr6));
                         else
-                            output.WriteLine("    address: " + new IPAddress(baddr6) + "/" + data[pos + 1 + 4]);
+                            output.WriteLine("    address: " + new IPAddress(baddr6) + "/" + data[pos + 1 + 16]);
                         break;
                     case F2B_FWDATA_TYPE0_ENUM.F2B_FWDATA_IPv6_RANGE:
                         byte[] baddrLow6 = new byte[16];

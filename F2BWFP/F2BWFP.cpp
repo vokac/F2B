@@ -1705,7 +1705,7 @@ void Firewall::List(bool details, GUID layer, Dictionary<UInt64, String^>^ list)
 				UINT8 prefix = 0;
 				while (prefix < 32)
 				{
-					if ((ntohl(c->conditionValue.v4AddrMask->mask) & ((UINT32)1 << (31 - i))) == 0)
+					if ((ntohl(c->conditionValue.v4AddrMask->mask) & ((UINT32)1 << (31 - prefix))) != 0)
 					{
 						break;
 					}
