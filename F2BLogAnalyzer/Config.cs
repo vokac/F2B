@@ -4,6 +4,7 @@ using System.ComponentModel;
 using System.Configuration;
 using System.Diagnostics;
 using System.Globalization;
+using System.IO;
 using System.Net;
 using System.Xml;
 #endregion
@@ -28,34 +29,43 @@ namespace F2B
                         if (instance == null)
                         {
                             //ConfigurationManager.RefreshSection("f2bSection");
+                            if (!File.Exists(Program.ConfigFile))
+                            {
+                                Log.Error("Configuration file \"" + Program.ConfigFile + "\" doesn't exists");
+                                throw new Exception("Missing configuration file \"" + Program.ConfigFile + "\"");
+                            }
+
                             //ExeConfigurationFileMap configMap = new ExeConfigurationFileMap();
                             //configMap.ExeConfigFilename = @"d:\test\justAConfigFile.config.whateverYouLikeExtension";
                             ExeConfigurationFileMap map = new ExeConfigurationFileMap { ExeConfigFilename = Program.ConfigFile };
-                            Configuration cfg = ConfigurationManager.OpenMappedExeConfiguration(map, ConfigurationUserLevel.None);
 
-                            F2BSection config;
                             try
                             {
-                                config = cfg.GetSection("f2bSection") as F2BSection;
+                                Configuration cfg = ConfigurationManager.OpenMappedExeConfiguration(map, ConfigurationUserLevel.None);
+                                instance = cfg.GetSection("f2bSection") as F2BSection;
                             }
                             catch (ConfigurationErrorsException ex)
                             {
-                                Log.Error("Unable to process config file \""
-                                    + cfg.FilePath + "\": " + ex.Message);
+                                Log.Error("Configuration exception while processing config file \""
+                                    + Program.ConfigFile + "\": " + ex.Message);
+                                throw;
+                            }
+                            catch (Exception ex)
+                            {
+                                Log.Error("Unexpected exception while processing config file \""
+                                    + Program.ConfigFile + "\": " + ex.Message);
                                 throw;
                             }
 
-                            if (config == null)
+                            if (instance == null)
                             {
                                 // TODO: add more details in case we include additional config files
                                 throw new Exception("Invalid/missing configuration file \""
-                                    + cfg.FilePath + "\": no f2bSection");
+                                    + Program.ConfigFile + "\": no f2bSection");
                             }
 
                             // save configuration (just a test)
                             //cfg.SaveAs(@"C:\test.xml", ConfigurationSaveMode.Full, true);
-
-                            instance = config;
                         }
                     }
                 }
