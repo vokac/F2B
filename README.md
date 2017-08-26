@@ -1354,7 +1354,7 @@ new module development but it can also help troubleshooting issues
 with configuration. When you run F2BLogAnalyzer interactively you can press
 "d" key to dump program state in `c:\F2B\dump.txt` (different file can be
 passed with `--dump-file filename` command line option). Special log event
-that can be created with `LogEvent.exe dump filename` also dumps internal
+that can be created with `LogEvents.exe dump filename` also dumps internal
 F2BLogAnalyzer state in required filename.
 
 In addition to config file `F2BLogAnalyzer.exe` supports also command

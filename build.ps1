@@ -84,11 +84,13 @@ $cppdir = if ($platform -eq "x64") {"x64\${config}"} else {"${config}"}
 Write-Host "Using cppdir `"${cppdir}`""
 New-Item -Type directory "${PKGPATH}" | Out-Null
 Copy-Item -Verbose "README.md" "${PKGPATH}"
+Copy-Item -Verbose "F2B.pdf" "${PKGPATH}"
 Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer.*.exe" "${PKGPATH}"
 Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\F2BLogAnalyzer*.config*" "${PKGPATH}"
 #Copy-Item -Verbose "F2BLogAnalyzer\App.config" "${PKGPATH}\F2BLogAnalyzer.exe.config"
 #Copy-Item -Verbose "F2BLogAnalyzer\App.config.full" "${PKGPATH}\F2BLogAnalyzer.exe.config.full"
 #Copy-Item -Verbose "F2BLogAnalyzer\App.config.minimal" "${PKGPATH}\F2BLogAnalyzer.exe.config.minimal"
+Copy-Item -Verbose "F2BLogAnalyzer\bin\${config}\LogEvents.exe" "${PKGPATH}"
 Copy-Item -Verbose "F2BFirewall\bin\${config}\F2BFirewall.exe" "${PKGPATH}"
 Copy-Item -Verbose "F2BFirewall\bin\${config}\F2BFirewall.exe.config" "${PKGPATH}"
 Copy-Item -Verbose "F2BFwCmd\bin\${config}\F2BFwCmd.exe" "${PKGPATH}"
@@ -97,12 +99,10 @@ Copy-Item -Verbose "F2BQueue\bin\${config}\F2BQueue.exe" "${PKGPATH}"
 Copy-Item -Verbose "F2BQueue\bin\${config}\F2BQueue.exe.config" "${PKGPATH}"
 Copy-Item -Verbose "${cppdir}\F2BWFP.dll" "${PKGPATH}"
 Copy-Item -Verbose "F2BLogAnalyzer\tests\*.ps1" "${PKGPATH}"
-foreach ($path in @("F2BLogAnalyzer\tests\LogEvent.exe")) {
-   if (Test-Path "$path") {
-      Copy-Item -Verbose "${path}" "${PKGPATH}"
-   }
+# copy everything from F2BDist directory in output path
+if (Test-Path F2BDist) {
+  Copy-Item -Verbose "F2BDist\*.*" "${PKGPATH}"
 }
-# copy required visual studio redistributable files
 # (this only works with visual studio 2015)
 $libdir = if ($platform -eq "x64") {"${Env:windir}\system32"} else {"${Env:windir}\SysWOW64"}
 Write-Host "Using libdir `"${libdir}`""
