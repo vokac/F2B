@@ -70,10 +70,6 @@
     <Prefer32Bit>false</Prefer32Bit>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="F2BWFP, Version=1.0.5757.18055, Culture=neutral, processorArchitecture=x86">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\Debug\F2BWFP.dll</HintPath>
-    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Configuration" />
     <Reference Include="System.Configuration.Install" />
@@ -158,6 +154,12 @@
       <Isolated>False</Isolated>
       <EmbedInteropTypes>True</EmbedInteropTypes>
     </COMReference>
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\F2BWFP\F2BWFP.vcxproj">
+      <Project>{9a3952ab-bde3-4669-8ec1-f14e8735c63a}</Project>
+      <Name>F2BWFP</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="..\F2BShared\F2BShared.projitems" Label="Shared" />
   <Import Project="..\F2BSharedWFP\F2BSharedWFP.projitems" Label="Shared" />
