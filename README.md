@@ -1559,7 +1559,7 @@ F2BFwCmd add-privileges [-u DOMAIN\username]
 ```
 F2BFwCmd remove-privileges [-u DOMAIN\username]
 ```
-* list all F2B filter rules
+* list all F2B filter rules (to get full firewall configuration use `netsh wfp show state wfpstate.xml`)
 ```
 F2BFwCmd list-filters
 ```
