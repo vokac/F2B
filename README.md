@@ -1565,7 +1565,8 @@ F2BFwCmd list-filters
 ```
 * add F2B firewall filter for 192.0.2.123/24 with 5 minute expiration
 ```
-F2BFwCmd add-filter --address 192.0.2.123/24 --expiration "DateTime.UtcNow.Ticks + 5 * 60 * TimeSpan.TicksPerSecond"
+powershell -command "[System.DateTime]::UtcNow.Ticks + [System.TimeSpan]::FromMinutes(10).Ticks"
+F2BFwCmd add-filter --address 192.0.2.123/24 --expiration 636403126277103869
 ```
 * add pernament F2B firewall filter with hight priority which permits access from 192.0.2.234
 ```
